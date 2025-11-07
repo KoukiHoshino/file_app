@@ -1,0 +1,490 @@
+/* --- 基本設定 --- */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #ffffff; /* 基本の文字色を白に */
+  overflow-y: auto;
+}
+
+/* --- 背景の設定 --- */
+.app-container {
+  width: 100vw;
+  min-height: 100vh;
+  height: auto;
+  
+  /* ↓↓ background を変更 ↓↓ */
+  background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460, #16213e);
+  
+  /* ↓↓ 以下の3行を追加 ↓↓ */
+  background-size: 300% 300%; /* グラデーションのサイズを大きくして動きを滑らかに */
+  animation: animated-gradient 30s ease infinite; /* 30秒かけてゆっくり動かす */
+  
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* --- ガラスモーフ パネル --- */
+.glass-morph {
+  background: rgba(255, 255, 255, 0.1); /* 半透明の白 */
+  backdrop-filter: blur(15px);         /* 背景のぼかし (重要) */
+  border: 1px solid rgba(255, 255, 255, 0.2); /* 薄い境界線 */
+  border-radius: 16px;                 /* 角丸 */
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); /* 影 */
+}
+
+/* --- 入力フォームパネルの調整 --- */
+.form-panel {
+  width: 90%;
+  max-width: 500px;
+  padding: 2rem;
+  box-sizing: border-box; /* パディングを含めて幅を計算 */
+}
+
+.form-panel h1 {
+  text-align: center;
+  margin-top: 0;
+  font-weight: 300; /* フォントを細めに */
+  letter-spacing: 1px;
+}
+
+/* --- 入力欄グループ --- */
+.input-group {
+  margin-bottom: 1.5rem;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8); /* ラベルの文字色を少し薄く */
+}
+
+/* --- テキスト入力とテキストエリアのスタイル --- */
+input[type="text"],
+textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.2); /* 入力欄も少し透明に */
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  color: #ffffff; /* 入力文字の色 */
+  font-size: 1rem;
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+input[type="text"]::placeholder,
+textarea::placeholder {
+  color: rgba(255, 255, 255, 0.5); /* プレースホルダーの色 */
+}
+
+/* フォーカスが当たった時のスタイル */
+input[type="text"]:focus,
+textarea:focus {
+  outline: none; /* デフォルトの青い枠線を消す */
+  background: rgba(255, 255, 255, 0.3);
+  border-color: #00c6ff; /* 枠線を鮮やかな青に */
+  box-shadow: 0 0 15px rgba(0, 198, 255, 0.7), 0 0 5px rgba(0, 198, 255, 1);
+}
+
+/* --- ボタンのスタイル --- */
+button {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #00c6ff, #0072ff); /* 鮮やかな青のグラデーション */
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 15px rgba(0, 114, 255, 0.3);
+}
+
+button:hover {
+  transform: translateY(-3px); /* 少しだけ多く浮き上がらせる */
+  box-shadow: 0 8px 25px rgba(0, 114, 255, 0.6); /* 影を広げる */
+  background: linear-gradient(135deg, #20d7ff, #0082ff); 
+}
+
+button:active {
+  transform: translateY(0); /* クリック時に戻る */
+  box-shadow: 0 4px 15px rgba(0, 114, 255, 0.3);
+}
+
+.input-row {
+    display: flex; /* これが要素を横並びにするための宣言です */
+    align-items: center; /* 高さが違う要素を下端で揃えます */
+    gap: 10px; /* テキストエリアとボタンの間に隙間を作ります */
+}
+
+.input-row input {
+    flex-grow: 1; /* テキストエリアが残りの幅をすべて使うようにします */
+}
+
+/* --- save_dir テキストエリアの高さとパディングを調整 --- */
+.input-row input#save_dir {
+    height: 40px; /* アイコンボタンの高さと合わせる */
+    box-sizing: border-box; /* padding を高さに含める */
+}
+
+/* --- フォルダ選択ボタン (アイコン) --- */
+.input-group button.select-button { /* input-group内にあるselect-button */
+  width: 40px; /* アイコンボタンの幅を固定 */
+  height: 40px; /* アイコンボタンの高さを固定 */
+  padding: 0; /* パディングをなくす */
+  font-size: 1.2rem; /* アイコンのサイズ */
+  display: flex; /* Flexboxでアイコンを中央揃え */
+  justify-content: center;
+  align-items: center;
+  /* グラデーションやシャドウは既存のものを利用 */
+}
+
+.input-group .select-button i {
+  color: #fff; /* アイコンの色を白に */
+}
+
+/* フォルダパス表示用のテキストエリアとボタンを横並びにするため、少し調整 */
+.input-group.folder-path-selector { /* このクラスをindex.htmlのdivに追加する */
+    display: flex;
+    align-items: flex-end; /* ボタンを下端に揃える */
+    gap: 10px; /* テキストエリアとボタンの隙間 */
+}
+
+.input-group.folder-path-selector textarea {
+    flex-grow: 1; /* テキストエリアが残りのスペースを埋める */
+}
+
+/* --- 読み取り専用のテキストエリアのスタイル調整 --- */
+textarea[readonly] {
+  background: rgba(0, 0, 0, 0.3); /* より暗く */
+  color: rgba(255, 255, 255, 0.6);
+  cursor: not-allowed; /* マウスカーソルを変更 */
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* (入力欄のフォーカス設定を readonly 以外に限定) */
+input[type="text"]:not([readonly]):focus,
+textarea:not([readonly]):focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 15px rgba(80, 180, 255, 0.5);
+}
+
+/* --- ドロップダウン (select) のスタイル --- */
+select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.2); /* 背景を透明に */
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  color: #ffffff; /* 文字色 */
+  font-size: 1rem;
+  appearance: none; /* OS標準の矢印を消す */
+  cursor: pointer;
+
+  /* カスタム矢印 (背景画像で追加) */
+  background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-13%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2013l128%20128c3.6%203.6%207.8%205.4%2013%205.4s9.4-1.8%2013-5.4l128-128c3.6-3.6%205.4-7.8%205.4-13%200-5-1.8-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E');
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 0.65em auto;
+}
+
+select:focus {
+  outline: none;
+  background-color: rgba(255, 255, 255, 0.3); /* focus時の背景色 */
+  box-shadow: 0 0 15px rgba(80, 180, 255, 0.5); /* focus時の光 */
+}
+
+/* ドロップダウンの選択肢 (option) のスタイル */
+select option {
+  background: #16213e; /* 背景色 (ガラスモーフの背景色に合わせる) */
+  color: #ffffff; /* 文字色 */
+}
+
+/* --- 通知メッセージ (トースト) --- */
+#notification {
+  position: fixed; /* 画面に固定 */
+  top: 20px; /* 【変更】bottom から top に変更 */
+  left: 50%; /* 画面中央 */
+  transform: translate(-50%, -100px); /* 【変更】Y軸を画面上 (マイナス方向) に隠す */
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  background: rgba(0, 180, 50, 0.8); /* 成功の色 (緑) */
+  color: #ffffff;
+  font-weight: bold;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(5px);
+  opacity: 0; /* 透明にして隠す */
+  visibility: hidden; /* 操作もできないように */
+  transition: transform 0.4s ease-out, opacity 0.4s ease-out; /* アニメーション */
+  z-index: 1100; /* モーダル(1000)より大きな値 */
+}
+
+/* 表示時のスタイル */
+#notification.show {
+  transform: translate(-50%, 0); /* 【変更なし】Y軸を元の位置 (top: 20px) に戻す (上からスライドイン) */
+  opacity: 1;
+  visibility: visible;
+}
+
+/* エラー時のスタイル (赤色) */
+#notification.error {
+  background: rgba(220, 30, 30, 0.8); /* エラーの色 (赤) */
+}
+
+/* --- アイコンボタンの共通スタイル --- */
+.icon-button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%; /* 円形 */
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: background 0.3s, box-shadow 0.3s;
+}
+.icon-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+/* --- 設定ボタン (右上配置) --- */
+.settings-button {
+  position: absolute; /* form-panel を基準に配置 */
+  top: 20px;
+  right: 20px;
+}
+
+/* --- モーダル (設定画面) --- */
+.modal-backdrop {
+  position: fixed; /* 画面全体を覆う */
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5); /* 半透明の黒い背景 */
+  backdrop-filter: blur(5px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  opacity: 1;
+  transition: opacity 0.3s;
+}
+
+.modal-content {
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh; /* 高さが80%を超えたらスクロール */
+  overflow-y: auto;
+  padding: 2rem;
+  position: relative;
+  /* glass-morph は既存のスタイルが適用される */
+}
+
+.modal-content h2 {
+  margin-top: 0;
+  text-align: center;
+}
+
+.settings-section {
+  margin-bottom: 2rem;
+}
+.settings-section h3 {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  padding-bottom: 0.5rem;
+  font-weight: 400;
+}
+
+/* リスト表示エリア (スクロール可) */
+.settings-list-container {
+  max-height: 150px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.settings-list-container ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.settings-list-container li {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.9rem;
+}
+
+/* 【追加】アイテムテキストと削除ボタンの間にスペースを空け、ボタンを右に寄せる */
+.settings-list-container li span { /* テキスト部分 */
+  flex-grow: 1; /* 残りのスペースを全て使い、ボタンを右に押しやる */
+  padding-right: 10px; /* テキストとボタンの間に少し余白 */
+  word-break: break-word; /* 長いテキストがはみ出さないように */
+}
+.settings-list-container li:last-child {
+  border-bottom: none;
+}
+
+.delete-item-button {
+  flex-shrink: 0; /* ボタンが縮まないように */
+  margin-left: auto; /* autoマージンで右に寄せる */
+  background: none;
+  border: none;
+  color: rgba(255, 96, 96, 0.7); /* 赤色 */
+  font-size: 1.0rem; /* アイコンサイズを少し小さく */
+  cursor: pointer;
+  transition: transform 0.2s, color 0.2s;
+  padding: 2.0; /* パディング（余白）を 0 にします */
+  line-height: 0; /* アイコンの上下の余白を詰めます */
+  width: 20px; /* ボタンの幅を明示的に指定（微調整用） */
+  height: 20px; /* ボタンの高さを明示的に指定（微調整用） */
+  display: flex; /* アイコンを中央に配置 */
+  align-items: center;
+  justify-content: center;
+}
+.delete-item-button:hover {
+  transform: scale(1.1);
+  color: #ff6060; /* ホバー時に元の赤色に */
+}
+
+/* 追加フォーム */
+.settings-add-form {
+  display: flex;
+  gap: 10px;
+}
+.settings-add-form input {
+  flex-grow: 1; /* 入力欄が残りの幅を埋める */
+}
+.settings-add-form .add-button {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  flex-shrink: 0;
+  font-size: 1.5rem;
+  font-weight: bold;
+  background: linear-gradient(135deg, #00c6ff, #0072ff);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.settings-add-form .add-button:hover {
+  transform: scale(1.1);
+}
+
+/* 閉じるボタン */
+.close-button {
+  /* 既存の button スタイルが適用されるが、幅だけ上書き */
+  width: auto;
+  padding: 0.75rem 2rem;
+  display: block;
+  margin: 1rem auto 0; /* 中央寄せ */
+}
+
+/* --- インポート/エクスポート --- */
+.io-section {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.io-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.io-button {
+  /* 既存の button スタイルをベースにしつつ、色や幅を調整 */
+  width: auto;
+  padding: 0.6rem 1.5rem;
+  font-size: 0.9rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: none;
+}
+
+.io-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* --- ファイル名プレビュー --- */
+.preview-group {
+  margin-bottom: 1.5rem;
+}
+.preview-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+#filename-preview {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  font-family: monospace; /* 等幅フォント */
+  word-break: break-all; /* 長い場合に折り返す */
+  min-height: 1.2em;
+}
+
+.input-group.hidden {
+  display: none;
+}
+
+#filename-preview.error {
+  color: #ffbaba; /* 薄い赤色 */
+}
+
+/* --- ファイルの末尾に追加 (アニメーション定義) --- */
+@keyframes float-in {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- 入力フォームパネルの調整 (.form-panel) に animation を追加 --- */
+.form-panel {
+  width: 90%;
+  max-width: 500px;
+  padding: 2rem;
+  box-sizing: border-box;
+  
+  /* ↓↓ この1行を追加 ↓↓ */
+  animation: float-in 0.7s ease-out forwards;
+}
+
+/* --- ファイルの末尾に追加 (背景アニメーション定義) --- */
+@keyframes animated-gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}

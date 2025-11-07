@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>ファイル名管理ツール</title>
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:">
+        <link rel="stylesheet" href="./assets/fontawesome/all.min.css">
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <div class="app-container">
+
+            <div class="form-panel glass-morph">
+            <h1>ファイル属性入力</h1>
+
+            <button id="open-settings-button" class="icon-button settings-button" title="設定">
+                <i class="fas fa-cog"></i> </button>
+
+            <div class="input-group"> <label for="save_dir">保存場所:</label>
+                <div class="input-row">
+                    <input type="text" id="save_dir" readonly placeholder="保存先フォルダを選択..."></input>
+                    <button id="select-dir-button" class="select-button" title="保存先フォルダを選択">
+                        <i class="fas fa-folder-open"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="input-group" id="group-category">
+                <label for="attr_category">分類:</label>
+                <select id="attr_category">
+                    </select>
+            </div>
+            
+            <div class="input-group" id="group-project">
+                <label for="attr_project">プロジェクト:</label>
+                <select id="attr_project"></select>
+            </div>
+
+            <div class="input-group">
+                <label for="attr_extension">ファイル形式:</label>
+                <select id="attr_extension">
+                    </select>
+            </div>
+
+            <div class="input-group" id="group-freetext">
+                <label for="attr_freetext">自由記述 (ファイル名用):</label>
+                <input type="text" id="attr_freetext" placeholder="（オプション）ファイル名に追加するテキスト">
+            </div>
+
+            <div class="input-group">
+                <label for="attr_description">説明 (任意):</label>
+                <textarea id="attr_description" rows="3" placeholder="ファイルに関するメモ..."></textarea>
+            </div>
+
+            <div class="preview-group">
+                <label>ファイル名プレビュー:</label>
+                <div id="filename-preview">（入力してください）</div>
+            </div>
+
+            <button id="create-button">ファイル作成</button>
+            </div>
+            
+            <div id="notification" class=""></div>
+
+            <div id="settings-modal" class="modal-backdrop" style="display: none;"> <div class="modal-content glass-morph">
+                <h2>設定</h2>
+                <div class="settings-section">
+                <h3>基本設定</h3>
+                <div class="input-group">
+                    <label for="author-input">制作者 (必須):</label>
+                    <input type="text" id="author-input" placeholder="あなたの名前を入力">
+                </div>
+
+                <div class="input-group">
+                    <label for="default-path-input">デフォルト保存場所:</label>
+                    <div class="input-row">
+                    <input type="text" id="default-path-input" readonly placeholder="（オプション）起動時のデフォルトフォルダ">
+                    <button id="browse-default-path-button" class="select-button" title="参照">
+                        <i class="fas fa-folder-open"></i>
+                    </button>
+                    </div>
+                </div>
+                </div>
+
+                <div class="settings-section">
+                <h3>ファイル命名規則</h3>
+                <div class="input-group">
+                    <label for="naming-template-input">テンプレート:</label>
+                    <input type="text" id="naming-template-input">
+                    <!-- 【変更】ヘルプテキストに新しいトークンを追加 -->
+                    <small>利用可能なトークン: {date}, {datetime}, {author}, {category}, {project}, {free_text}, {version} (必須)</small>
+                </div>
+                </div>
+
+                <div class="settings-section">
+                <h3>分類リスト</h3>
+                <div class="settings-list-container">
+                    <ul id="categories-list">
+                    </ul>
+                </div>
+                <div class="settings-add-form">
+                    <input type="text" id="new-category-input" placeholder="新しい分類名 (例: [メモ])">
+                    <button id="add-category-button" class="add-button">+</button>
+                </div>
+                </div>
+
+                <div class="settings-section">
+                <h3>プロジェクトリスト</h3>
+                <div class="settings-list-container">
+                    <ul id="projects-list">
+                    </ul>
+                </div>
+                <div class="settings-add-form">
+                    <input type="text" id="new-project-input" placeholder="新しいプロジェクト名">
+                    <button id="add-project-button" class="add-button">+</button>
+                </div>
+                </div>
+
+                <div class="settings-section io-section">
+                <h3>設定の管理</h3>
+                <div class="io-buttons">
+                    <button id="import-settings-button" class="io-button">インポート</button>
+                    <button id="export-settings-button" class="io-button">エクスポート</button>
+                </div>
+                </div>
+
+                <button id="close-settings-button" class="close-button">閉じる</button>
+            </div>
+            </div>
+            <script src="renderer.js"></script>
+        </div>
+    </body>
+</html>

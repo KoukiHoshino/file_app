@@ -1,0 +1,26 @@
+{
+  "categories": [
+    "[議事録]",
+    "[報告書]",
+    "[提案書]",
+    "[仕様書]",
+    "[その他]"
+  ],
+  "projects": [
+    "プロジェクトA",
+    "プロジェクトB",
+    "定例MTG",
+    "その他"
+  ],
+  "extensions": [
+    ".txt",
+    ".md",
+    ".csv",
+    ".log"
+  ],
+  "config": {
+    "author": "Author",
+    "defaultSavePath": "C:\\projects\\file_app\\save",
+    "namingTemplate": "{datetime}_{category}_{project}_{version}"
+  }
+}
