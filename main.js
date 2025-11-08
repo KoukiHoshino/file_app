@@ -1,7 +1,8 @@
 // Electronの基本的なモジュールを読み込む
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('node:path');
-const fs = require('node:fs'); // Node.jsのファイルシステムモジュール
+const fs = require('node:fs');
+const fsPromises = require('node:fs/promises'); // ★ 堅牢性: 非同期I/Oのためにインポート
 
 // --- パス設定 ---
 const isPackaged = app.isPackaged;
@@ -9,13 +10,13 @@ const dataBasePath = isPackaged
   ? path.join(process.resourcesPath, 'data')
   : path.join(__dirname, 'data');
 
-// dataディレクトリが存在しない場合は作成
+// dataディレクトリが存在しない場合は作成 (同期処理でOK)
 if (!fs.existsSync(dataBasePath)) {
   fs.mkdirSync(dataBasePath, { recursive: true });
 }
 
 const contentTemplatesPath = path.join(dataBasePath, 'content_templates');
-// content_templates ディレクトリが存在しない場合は作成
+// content_templates ディレクトリが存在しない場合は作成 (同期処理でOK)
 if (!fs.existsSync(contentTemplatesPath)) {
   fs.mkdirSync(contentTemplatesPath, { recursive: true });
 }
@@ -25,7 +26,7 @@ if (!fs.existsSync(contentTemplatesPath)) {
 const createWindow = () => {
   const win = new BrowserWindow({
     width: 800,
-    height: 700, // 高さを少し増やす
+    height: 700,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'), 
       contextIsolation: true,
@@ -58,10 +59,16 @@ function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function findNextVersion(directory, regex) {
+/**
+ * ★ 堅牢性: 【変更】次のバージョン番号を非同期で検索
+ * @param {string} directory 検索するディレクトリ
+ * @param {RegExp} regex バージョンを抽出する正規表現
+ * @returns {Promise<number>} 次のバージョン番号
+ */
+async function findNextVersionAsync(directory, regex) {
   let maxVersion = 0;
   try {
-    const files = fs.readdirSync(directory);
+    const files = await fsPromises.readdir(directory); // ★ 非同期に変更
     for (const file of files) {
       const match = file.match(regex);
       if (match && match[1]) {
@@ -72,22 +79,29 @@ function findNextVersion(directory, regex) {
       }
     }
   } catch (err) {
-    console.error(`フォルダ読み取りエラー: ${err.message}`);
+    // 読み取りエラー（権限など）はバージョン0として扱う
+    console.warn(`フォルダ読み取りエラー: ${err.message}`);
   }
   return maxVersion + 1;
 }
 
 /**
- * 【新規】JSONファイルを安全に読み込む関数
+ * ★ 堅牢性: 【変更】JSONファイルを安全に読み込む関数 (非同期)
  * @param {string} fileName (例: "categories.json")
  * @param {any} defaultValue ファイルが存在しない場合に返す値
- * @returns {any} 読み込んだデータまたはデフォルト値
+ * @returns {Promise<any>} 読み込んだデータまたはデフォルト値
  */
-function readJsonFile(fileName, defaultValue) {
+async function readJsonFile(fileName, defaultValue) {
   const filePath = path.join(dataBasePath, fileName);
   try {
+    // fs.existsSync は同期のまま（ファイル存在チェックは高速なため許容）
     if (fs.existsSync(filePath)) {
-      const data = fs.readFileSync(filePath, 'utf8');
+      const stats = await fsPromises.stat(filePath); // 非同期
+      if (stats.size > 10 * 1024 * 1024) { // 10MB
+        console.error(`${fileName} の読み込み失敗: ファイルサイズが大きすぎます。`);
+        return defaultValue;
+      }
+      const data = await fsPromises.readFile(filePath, 'utf8'); // 非同期
       return JSON.parse(data);
     }
   } catch (err) {
@@ -97,16 +111,16 @@ function readJsonFile(fileName, defaultValue) {
 }
 
 /**
- * 【新規】JSONファイルを安全に書き込む関数
+ * ★ 堅牢性: 【変更】JSONファイルを安全に書き込む関数 (非同期)
  * @param {string} fileName (例: "categories.json")
  * @param {any} data 書き込むデータ
- * @returns {{success: boolean, message?: string}}
+ * @returns {Promise<{success: boolean, message?: string}>}
  */
-function writeJsonFile(fileName, data) {
+async function writeJsonFile(fileName, data) {
   const filePath = path.join(dataBasePath, fileName);
   try {
     const jsonData = JSON.stringify(data, null, 2);
-    fs.writeFileSync(filePath, jsonData, 'utf8');
+    await fsPromises.writeFile(filePath, jsonData, 'utf8'); // 非同期
     return { success: true };
   } catch (err) {
     console.error(`${fileName} の書き込みに失敗:`, err);
@@ -114,35 +128,74 @@ function writeJsonFile(fileName, data) {
   }
 }
 
+// ★ 堅牢性: パス関連の文字をサニタイズするヘルパー
+function sanitizeForFileName(input) {
+  if (typeof input !== 'string') return '';
+  return input.replace(/(\.\.[/\\])|[/\\]|[:*?"<>|]/g, ''); 
+}
+
+// ★ 堅牢性: saveDir が危険なパスでないか検証するヘルパー
+function isValidSaveDir(saveDir) {
+  if (typeof saveDir !== 'string' || !saveDir) return false;
+  const normalizedPath = path.normalize(saveDir);
+  if (normalizedPath.includes('..')) {
+    return false;
+  }
+  if (!path.isAbsolute(normalizedPath)) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * ★ 堅牢性: 【新規】ディレクトリが書き込み可能かチェックするヘルパー
+ * @param {string} directoryPath
+ * @returns {Promise<{success: boolean, message?: string}>}
+ */
+async function checkDirectoryWritable(directoryPath) {
+  try {
+    await fsPromises.access(directoryPath, fs.constants.W_OK); // 非同期
+    return { success: true };
+  } catch (err) {
+    console.warn(`書き込み権限エラー: ${directoryPath}`, err);
+    return { success: false, message: '選択された保存場所への書き込み権限がありません。' };
+  }
+}
+
+
 // --- 【変更】ファイル作成 (中核機能) ---
 ipcMain.handle('create-file', async (event, data) => {
   
   const { saveDir, extension, description, template, values } = data;
   
-  // 1. 制作者情報を config.json から取得
-  const config = readJsonFile('config.json', {});
+  // 1. 制作者情報を config.json から取得 (★ 非同期に変更)
+  const config = await readJsonFile('config.json', {});
   const author = config.author || '';
 
   // 2. バリデーション
   if (!author) {
     return { success: false, message: '制作者が設定されていません。設定画面から設定してください。' };
   } 
-  if (!saveDir) {
-    return { success: false, message: '保存場所が選択されていません。' };
+  
+  if (!isValidSaveDir(saveDir)) {
+    return { success: false, message: '保存場所のパスが無効です。' };
   }
-  if (!extension) {
-    return { success: false, message: 'ファイル形式が選択されていません。' };
+  
+  // ★ 堅牢性: 書き込み権限チェックを最初に行う
+  const writableCheck = await checkDirectoryWritable(saveDir);
+  if (!writableCheck.success) {
+    return { success: false, message: writableCheck.message };
   }
-  // ▼▼▼ 修正 ▼▼▼
-  // {version} 必須チェックを削除
-  // ▲▲▲ 修正完了 ▲▲▲
-
-  // 【変更】テンプレートに基づいた動的バリデーション
+  
+  const saneExtension = sanitizeForFileName(extension);
+  if (saneExtension !== extension || !saneExtension) {
+    return { success: false, message: 'ファイル形式の値が無効です。' };
+  }
+  
+  // テンプレートに基づいた動的バリデーション
   const missingTokens = [];
   template.replace(/{([^{}]+)}/g, (match, key) => {
-    // values にキーが存在しない、かつそれが 'freetext' や 'free_text' 以外の場合
     if (!values[key] && key !== 'free_text' && key !== 'freetext' &&
-        // main側で生成するトークン以外
         key !== 'date' && key !== 'datetime' && key !== 'author' && key !== 'version') {
       missingTokens.push(match);
     }
@@ -152,8 +205,7 @@ ipcMain.handle('create-file', async (event, data) => {
     return { success: false, message: `必須項目が入力されていません: ${missingTokens.join(', ')}` };
   }
 
-
-  // 3. 【変更】全トークンの値をマージ
+  // 3. 全トークンの値をマージ
   const now = new Date();
   const date = now.toISOString().slice(0, 10).replace(/-/g, '');
   const datetime = now.getFullYear() +
@@ -163,72 +215,64 @@ ipcMain.handle('create-file', async (event, data) => {
                    String(now.getMinutes()).padStart(2, '0') +
                    String(now.getSeconds()).padStart(2, '0');
 
-  const allValues = {
-    ...values, // rendererから来た値 (category, project, custom tokens...)
-    date: date,
-    datetime: datetime,
-    author: author
-    // version はここでは含めない
-  };
+  const allValues = { ...values, date, datetime, author };
 
   // 4. ベース名（バージョン以外）を生成
   let baseName = template;
   try {
     baseName = baseName.replace(/{([^{}]+)}/g, (match, key) => {
-      if (key === 'version') return '{version}'; // version は後で置換
-      // 値が空 or 未定義の場合は空文字を返す
-      return allValues[key] || '';
+      if (key === 'version') return '{version}'; 
+      const saneValue = sanitizeForFileName(allValues[key] || '');
+      return saneValue;
     });
   } catch (err) {
     return { success: false, message: `テンプレートの解析に失敗: ${err.message}` };
   }
 
-
-  // ▼▼▼ 修正 ▼▼▼
   // 5. 最終的なファイル名とパスを決定
   let finalFilename;
   
   if (template.includes('{version}')) {
-    // 従来のバージョン管理ロジック
     let searchPattern = escapeRegExp(baseName)
       .replace(escapeRegExp('{version}'), "v(\\d{4})");
-
-    const searchRegex = new RegExp(`^${searchPattern}${escapeRegExp(extension)}$`);
+    const searchRegex = new RegExp(`^${searchPattern}${escapeRegExp(saneExtension)}$`);
     
-    const nextVersionNumber = findNextVersion(saveDir, searchRegex);
+    // ★ 修正: 非同期関数を呼び出す
+    const nextVersionNumber = await findNextVersionAsync(saveDir, searchRegex);
     const versionString = `v${String(nextVersionNumber).padStart(4, '0')}`;
-
-    finalFilename = baseName.replace('{version}', versionString) + extension;
-  
+    finalFilename = baseName.replace('{version}', versionString) + saneExtension;
   } else {
-    // バージョン管理なしのロジック
-    finalFilename = baseName + extension;
-    
-    // 【重要】ファイルが既に存在するかチェック
+    finalFilename = baseName + saneExtension;
+    // ★ 堅牢性: fs.existsSync は同期だが、1回きりの呼び出しなので許容
     if (fs.existsSync(path.join(saveDir, finalFilename))) {
         return { success: false, message: `ファイルが既に存在します: ${finalFilename}` };
     }
   }
 
   const filePath = path.join(saveDir, finalFilename);
-  // ▲▲▲ 修正完了 ▲▲▲
-
 
   // 8. ファイル内容のテンプレートを検索して書き込む
   let fileContent = '';
   try {
-    const categoryValue = values.category || ''; // category が使われてるか不明だが、従来ロジックを維持
-    const templateFileName = `${categoryValue}${extension}`;
+    const categoryValue = sanitizeForFileName(values.category || '');
+    const templateFileName = `${categoryValue}${saneExtension}`;
     const templateFilePath = path.join(contentTemplatesPath, templateFileName);
-
-    if (fs.existsSync(templateFilePath)) {
-      fileContent = fs.readFileSync(templateFilePath, 'utf8');
-      console.log(`Template loaded: '${templateFileName}'`);
+    const resolvedTemplatePath = path.resolve(templateFilePath);
+    const resolvedBase = path.resolve(contentTemplatesPath);
+    
+    if (resolvedTemplatePath.startsWith(resolvedBase)) {
+      // ★ 堅牢性: fs.existsSync は同期だが、1回きりの呼び出しなので許容
+      if (fs.existsSync(templateFilePath)) {
+        fileContent = await fsPromises.readFile(templateFilePath, 'utf8'); // ★ 非同期
+        console.log(`Template loaded: '${templateFileName}'`);
+      } else {
+        console.log(`Template not found: '${templateFileName}'. Creating empty file.`);
+      }
     } else {
-      console.log(`Template not found: '${templateFileName}'. Creating empty file.`);
+      console.warn(`セキュリティ警告: テンプレートパスが不正です (Path Traversalの試行?): ${templateFileName}`);
     }
 
-    fs.writeFileSync(filePath, fileContent, 'utf8'); 
+    await fsPromises.writeFile(filePath, fileContent, 'utf8'); // ★ 非同期
 
   } catch (err) {
     console.error(err);
@@ -239,9 +283,17 @@ ipcMain.handle('create-file', async (event, data) => {
   try {
     const logFilePath = path.join(dataBasePath, 'creation_log.csv');
     const timestamp = new Date().toISOString();
-    const escapeCSV = (str) => `"${String(str || '').replace(/"/g, '""')}"`;
+    
+    // ★ セキュリティ: CSVインジェクション対策を強化
+    const escapeCSV = (str) => {
+      let safeStr = String(str || '').replace(/"/g, '""');
+      // 数式として解釈されるのを防ぐ
+      if (['=', '+', '-', '@'].includes(safeStr.charAt(0))) {
+        safeStr = `'${safeStr}`; // 先頭にシングルクォートを追加
+      }
+      return `"${safeStr}"`;
+    };
 
-    // 【変更】ログに記録する項目を allValues から取得
     const logEntry = [
       escapeCSV(timestamp),
       escapeCSV(author),
@@ -252,16 +304,16 @@ ipcMain.handle('create-file', async (event, data) => {
       escapeCSV(description)
     ].join(',') + '\n';
 
+    // ★ 堅牢性: fs.existsSync は同期だが、1回きりの呼び出しなので許容
     if (!fs.existsSync(logFilePath)) {
       const header = "Timestamp,Author,Category,Project,Filename,SavePath,Description\n";
-      fs.writeFileSync(logFilePath, header, 'utf8');
+      await fsPromises.writeFile(logFilePath, header, 'utf8'); // ★ 非同期
     }
     
-    fs.appendFileSync(logFilePath, logEntry, 'utf8');
+    await fsPromises.appendFile(logFilePath, logEntry, 'utf8'); // ★ 非同期
 
   } catch (logErr) {
     console.error('CSVログの書き込みに失敗:', logErr);
-    // ログ失敗は警告のみ
     return { success: true, message: `ファイル作成成功。ただしCSVログの記録に失敗しました: ${logErr.message}` };
   }
   
@@ -274,21 +326,15 @@ ipcMain.handle('get-filename-preview', async (event, data) => {
   
   const { saveDir, extension, template, values } = data;
 
-  const config = readJsonFile('config.json', {});
+  const config = await readJsonFile('config.json', {}); // ★ 非同期
   const author = config.author || '';
 
-  // 1. バリデーション (プレビュー用)
   if (!author) {
     return { success: false, preview: '（設定画面から制作者を登録してください）' };
   } 
   
-  // 必須項目チェック (拡張子のみ)
-  // ★ 改善提案1: このチェックは renderer 側で行うようになったため、ここでは不要
-  // if (!extension) {
-  //   return { success: false, preview: '（ファイル形式が選択されていません）' };
-  // }
-  
-  // 2. 全トークンの値をマージ
+  const saneExtension = sanitizeForFileName(extension || '');
+
   const now = new Date();
   const date = now.toISOString().slice(0, 10).replace(/-/g, '');
   const datetime = now.getFullYear() +
@@ -298,56 +344,51 @@ ipcMain.handle('get-filename-preview', async (event, data) => {
                    String(now.getMinutes()).padStart(2, '0') +
                    String(now.getSeconds()).padStart(2, '0');
 
-  const allValues = {
-    ...values,
-    date: date,
-    datetime: datetime,
-    author: author
-  };
+  const allValues = { ...values, date, datetime, author };
 
-  // 3. ベース名（バージョン以外）を生成
   let baseName = template;
   try {
     baseName = baseName.replace(/{([^{}]+)}/g, (match, key) => {
       if (key === 'version') return '{version}';
-      // 【変更】値がない場合は、エラーではなくトークン名をそのまま表示（プレビューのため）
-      return allValues[key] || (values[key] === '' ? '' : match); 
+      const saneValue = sanitizeForFileName(allValues[key] || '');
+      return allValues[key] != null ? saneValue : (values[key] === '' ? '' : match); 
     });
   } catch (err) {
     return { success: false, preview: '（テンプレート解析エラー）' };
   }
 
-
-  // ▼▼▼ 修正 ▼▼▼
-  // 4. 最終的なファイル名を決定
   let finalFilename;
 
   if (template.includes('{version}')) {
-    // 従来のプレビューロジック
     let versionString = 'vXXXX'; 
 
-    if (saveDir) {
-      try {
-        let searchPattern = escapeRegExp(baseName)
-          .replace(escapeRegExp('{version}'), "v(\\d{4})");
-        const searchRegex = new RegExp(`^${searchPattern}${escapeRegExp(extension)}$`);
-        
-        const nextVersionNumber = findNextVersion(saveDir, searchRegex);
-        versionString = `v${String(nextVersionNumber).padStart(4, '0')}`;
-      } catch (err) {
-        console.error("プレビュー時のバージョン検索エラー:", err);
-        versionString = 'vERR!'; // 検索失敗時
+    if (isValidSaveDir(saveDir)) {
+      // ★ 堅牢性: プレビュー時も権限をチェック
+      const writableCheck = await checkDirectoryWritable(saveDir);
+      if (!writableCheck.success) {
+        versionString = 'vPERM!'; // Permission Error
+      } else {
+        try {
+          let searchPattern = escapeRegExp(baseName)
+            .replace(escapeRegExp('{version}'), "v(\\d{4})");
+          const searchRegex = new RegExp(`^${searchPattern}${escapeRegExp(saneExtension)}$`);
+          
+          // ★ 修正: 非同期関数を呼び出す
+          const nextVersionNumber = await findNextVersionAsync(saveDir, searchRegex);
+          versionString = `v${String(nextVersionNumber).padStart(4, '0')}`;
+        } catch (err) {
+          console.error("プレビュー時のバージョン検索エラー:", err);
+          versionString = 'vERR!';
+        }
       }
     }
-    finalFilename = baseName.replace('{version}', versionString) + (extension || ''); // ★ extension が空の場合に対応
+    finalFilename = baseName.replace('{version}', versionString) + saneExtension;
   
   } else {
-    // バージョン管理なしのプレビュー
-    finalFilename = baseName + (extension || ''); // ★ extension が空の場合に対応
+    finalFilename = baseName + saneExtension;
   }
 
   return { success: true, preview: finalFilename };
-  // ▲▲▲ 修正完了 ▲▲▲
 });
 
 
@@ -374,15 +415,27 @@ ipcMain.handle('select-default-dir', async () => {
   return { success: true, path: filePaths[0] };
 });
 
+// ★ セキュリティ: 【新規】ネイティブ確認ダイアログ
+ipcMain.handle('show-confirmation-dialog', async (event, message) => {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  const { response } = await dialog.showMessageBox(window, {
+    type: 'question',
+    title: '確認',
+    message: message,
+    buttons: ['キャンセル', 'OK'],
+    defaultId: 1, // 'OK' をデフォルト
+    cancelId: 0
+  });
+  return response === 1; // OK が押されたら true
+});
 
-// --- API: JSONファイル読み書き ---
 
+// --- API: JSONファイル読み書き (非同期対応) ---
 ipcMain.handle('get-categories', () => readJsonFile('categories.json', []));
 ipcMain.handle('get-projects', () => readJsonFile('projects.json', []));
 ipcMain.handle('get-extensions', () => readJsonFile('extensions.json', []));
 ipcMain.handle('get-presets', () => readJsonFile('presets.json', []));
-ipcMain.handle('get-custom-tokens', () => readJsonFile('custom_tokens.json', [])); // 【追加】
-// ★ 改善提案2: lastUsedPresetId をデフォルトに追加
+ipcMain.handle('get-custom-tokens', () => readJsonFile('custom_tokens.json', []));
 ipcMain.handle('get-config', () => readJsonFile('config.json', { 
     author: '', 
     defaultSavePath: '', 
@@ -394,25 +447,28 @@ ipcMain.handle('update-categories', (event, data) => writeJsonFile('categories.j
 ipcMain.handle('update-projects', (event, data) => writeJsonFile('projects.json', data));
 ipcMain.handle('update-config', (event, data) => writeJsonFile('config.json', data));
 ipcMain.handle('update-presets', (event, data) => writeJsonFile('presets.json', data));
-ipcMain.handle('update-custom-tokens', (event, data) => writeJsonFile('custom_tokens.json', data)); // 【追加】
+ipcMain.handle('update-custom-tokens', (event, data) => writeJsonFile('custom_tokens.json', data));
 
 
-// --- API: インポート/エクスポート ---
+// --- API: インポート/エクスポート (非同期対応) ---
 ipcMain.handle('export-settings', async () => {
   try {
-    // 1. 全てのJSONデータを読み込む
-    const backupData = {
-      categories: readJsonFile('categories.json', []),
-      projects: readJsonFile('projects.json', []),
-      extensions: readJsonFile('extensions.json', []),
-      config: readJsonFile('config.json', {}),
-      presets: readJsonFile('presets.json', []),
-      customTokens: readJsonFile('custom_tokens.json', []) // 【追加】
-    };
-    
+    // 1. 全てのJSONデータを並列で読み込む (★ 非同期)
+    const [
+      categories, projects, extensions, config, presets, customTokens
+    ] = await Promise.all([
+      readJsonFile('categories.json', []),
+      readJsonFile('projects.json', []),
+      readJsonFile('extensions.json', []),
+      readJsonFile('config.json', {}),
+      readJsonFile('presets.json', []),
+      readJsonFile('custom_tokens.json', [])
+    ]);
+
+    const backupData = { categories, projects, extensions, config, presets, customTokens };
     const backupJson = JSON.stringify(backupData, null, 2);
 
-    // 2. 「保存」ダイアログを開く
+    // 2. 「保存」ダイアログ
     const { canceled, filePath } = await dialog.showSaveDialog({
       title: '設定をエクスポート',
       defaultPath: 'file_app_settings.json',
@@ -423,7 +479,7 @@ ipcMain.handle('export-settings', async () => {
       return { success: false, message: 'エクスポートがキャンセルされました。' };
     }
 
-    fs.writeFileSync(filePath, backupJson, 'utf8');
+    await fsPromises.writeFile(filePath, backupJson, 'utf8'); // ★ 非同期
     return { success: true, message: `設定を ${filePath} に保存しました。` };
 
   } catch (err) {
@@ -431,6 +487,19 @@ ipcMain.handle('export-settings', async () => {
     return { success: false, message: `エクスポートに失敗しました: ${err.message}` };
   }
 });
+
+// ★ 堅牢性: インポートデータの型チェック
+function isValidImportData(data) {
+  if (!data) return false;
+  const checkArray = (key) => data.hasOwnProperty(key) && Array.isArray(data[key]);
+  const checkObject = (key) => data.hasOwnProperty(key) && typeof data[key] === 'object' && data[key] !== null && !Array.isArray(data[key]);
+  return checkArray('categories') &&
+         checkArray('projects') &&
+         checkArray('extensions') &&
+         checkArray('presets') &&
+         checkArray('customTokens') &&
+         checkObject('config');
+}
 
 ipcMain.handle('import-settings', async () => {
   try {
@@ -446,24 +515,29 @@ ipcMain.handle('import-settings', async () => {
     }
 
     const filePath = filePaths[0];
-    const backupJson = fs.readFileSync(filePath, 'utf8');
+
+    // ★ 堅牢性: 1. ファイルサイズチェック (非同期)
+    const stats = await fsPromises.stat(filePath); // ★ 非同期
+    if (stats.size > 10 * 1024 * 1024) { // 10MB limit
+      return { success: false, message: 'インポート失敗: ファイルサイズが大きすぎます (最大10MB)。' };
+    }
+    
+    const backupJson = await fsPromises.readFile(filePath, 'utf8'); // ★ 非同期
     const backupData = JSON.parse(backupJson);
 
-    // 2. データが正しい形式か簡易チェック
-    // 【変更】customTokens もチェック対象に
-    if (!backupData || !Array.isArray(backupData.categories) || !Array.isArray(backupData.projects) || 
-        !Array.isArray(backupData.extensions) || !Array.isArray(backupData.presets) || 
-        !Array.isArray(backupData.customTokens) || !backupData.config) {
-      throw new Error('ファイルの形式が正しくありません。');
+    if (!isValidImportData(backupData)) {
+      throw new Error('ファイルの形式が正しくありません。必要なキーやデータ型が不足しています。');
     }
 
-    // 3. 全てのJSONを上書き
-    writeJsonFile('categories.json', backupData.categories);
-    writeJsonFile('projects.json', backupData.projects);
-    writeJsonFile('extensions.json', backupData.extensions);
-    writeJsonFile('config.json', backupData.config);
-    writeJsonFile('presets.json', backupData.presets);
-    writeJsonFile('custom_tokens.json', backupData.customTokens); // 【追加】
+    // 3. 全てのJSONを並列で上書き (★ 非同期)
+    await Promise.all([
+      writeJsonFile('categories.json', backupData.categories),
+      writeJsonFile('projects.json', backupData.projects),
+      writeJsonFile('extensions.json', backupData.extensions),
+      writeJsonFile('config.json', backupData.config),
+      writeJsonFile('presets.json', backupData.presets),
+      writeJsonFile('custom_tokens.json', backupData.customTokens)
+    ]);
 
     return { success: true, message: '設定をインポートしました。' };
 

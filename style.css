@@ -109,6 +109,7 @@ input[readonly]:focus {
 select {
   appearance: none; 
   cursor: pointer;
+  /* ★ セキュリティ: 'unsafe-inline' 削除のため data: URI を使用 */
   background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%2Dxmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%2Dwidth%3D%22292.4%22%2Dheight%3D%22292.4%22%3E%3Cpath%2Dfill%3D%22%23FFFFFF%22%2Dd%3D%22M287%2D69.4a17.6%2D17.6%2D0%2D0%2D0%2D13%2D5.4H18.4c-5%2D0%2D9.3%2D1.8%2D13%2D5.4A17.6%2D17.6%2D0%2D0%2D0%2D0%2D82.2c0%2D5%2D1.8%2D9.3%2D5.4%2D13l128%2D128c3.6%2D3.6%2D7.8%2D5.4%2D13%2D5.4s9.4%2D1.8%2D13%2D5.4l128%2D128c3.6%2D3.6%2D5.4%2D7.8%2D5.4%2D13%2D0%2D5%2D1.8%2D9.2%2D5.4%2D12.8z%22%2F%3E%3C%2Fsvg%3E');
   background-repeat: no-repeat;
   background-position: right 1rem center;
@@ -279,13 +280,24 @@ button:disabled {
   height: 100vh;
   background: rgba(0, 0, 0, 0.5); 
   backdrop-filter: blur(5px);
-  display: flex;
+  
+  /* ★ セキュリティ: 'unsafe-inline' 削除のため、CSSクラスで表示/非表示を制御 */
+  display: none; 
   justify-content: center;
   align-items: center;
   z-index: 1000;
   opacity: 1;
+  /*
+  opacity: 0;
   transition: opacity 0.3s;
+  */
 }
+/* ★ セキュリティ: モーダル表示用クラス */
+.modal-backdrop.show {
+  display: flex;
+  /* opacity: 1; */
+}
+
 
 .modal-content {
   width: 90%;
@@ -312,15 +324,15 @@ button:disabled {
 
 /* --- リスト表示エリア (スクロール可) --- */
 .settings-list-container {
-  max-height: 180px; /* 少し高さを増やす */
+  max-height: 180px; 
   overflow-y: auto;
   background: rgba(0, 0, 0, 0.2);
   border-radius: 8px;
   padding: 0.5rem;
   margin-bottom: 1rem;
-  position: relative; /* D&D プレースホルダー用 */
-  padding-bottom: 20px; /* D&D 一番下へのドロップ用 */
-  transition: border 0.2s, background 0.2s, box-shadow 0.2s; /* ★ 修正: box-shadow を追加 */
+  position: relative; 
+  padding-bottom: 20px; 
+  transition: border 0.2s, background 0.2s, box-shadow 0.2s;
 }
 
 .settings-list-container ul {
@@ -332,13 +344,13 @@ button:disabled {
 .settings-list-container li {
   display: flex;
   align-items: center;
-  justify-content: space-between; /* テキストとボタンを両端に */
+  justify-content: space-between;
   padding: 0.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   font-size: 0.9rem;
-  position: relative; /* D&D プレースホルダー用 */
+  position: relative;
   background: rgba(255, 255, 255, 0.05);
-  transition: transform 0.2s ease, opacity 0.2s ease; /* ★ 修正: transition 追加 */
+  transition: transform 0.2s ease, opacity 0.2s ease;
 }
 .settings-list-container li:last-child {
   border-bottom: none;
@@ -350,7 +362,7 @@ button:disabled {
   padding-right: 10px;
   word-break: break-word;
   display: flex;
-  flex-direction: column; /* 縦並び */
+  flex-direction: column;
 }
 /* マイセットリストのテキスト */
 .preset-name {
@@ -371,7 +383,7 @@ button:disabled {
 /* リストアイテムのボタン部分 */
 .item-controls {
   display: flex;
-  flex-shrink: 0; /* 縮まない */
+  flex-shrink: 0;
   gap: 5px;
 }
 .list-button {
@@ -399,21 +411,19 @@ button:disabled {
 .delete-item-button:hover { color: #ffadad; }
 
 
-/* ▼▼▼ ドラッグ＆ドロップ(D&D) スタイル (★ 修正) ▼▼▼ */
+/* ▼▼▼ ドラッグ＆ドロップ(D&D) スタイル ▼▼▼ */
 .settings-list-container li {
   cursor: grab;
 }
-/* ドラッグ中のアイテム本体 */
 .settings-list-container li.dragging {
-  opacity: 0.8; /* ★ 修正: 0.6 -> 0.8 */
+  opacity: 0.8; 
   background: #0072ff;
   cursor: grabbing;
-  transform: scale(1.05); /* ★ 修正: 1.03 -> 1.05 */
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4); /* ★ 修正: 影を強化 */
+  transform: scale(1.05); 
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
   z-index: 20;
 }
 
-/* プレースホルダーライン共通スタイル */
 .settings-list-container li::before,
 .settings-list-container li::after,
 .settings-list-container.drag-over-container::after {
@@ -421,36 +431,30 @@ button:disabled {
   position: absolute;
   left: 0;
   right: 0;
-  height: 4px; /* ★ 修正: 3px -> 4px */
-  background: #ffffff; /* ★ 修正: #33ddff -> #ffffff */
+  height: 4px; 
+  background: #ffffff;
   border-radius: 2px;
-  /* ★ 修正: 白の周りに青いグローを追加 */
   box-shadow: 0 0 12px rgba(0, 198, 255, 1), 0 0 5px rgba(0, 198, 255, 1); 
-  transform: scaleX(0); /* 通常は非表示 */
+  transform: scaleX(0);
   transition: transform 0.1s ease-out;
   z-index: 10;
 }
-/* アイテムの上にドロップ */
 .settings-list-container li.drag-over-top::before {
-  top: -2px; /* 線の太さの半分 */
+  top: -2px;
   transform: scaleX(1);
 }
-/* アイテムの下にドロップ */
 .settings-list-container li.drag-over-bottom::after {
   bottom: -2px;
   transform: scaleX(1);
 }
-/* リストコンテナの一番下にドロップ */
 .settings-list-container.drag-over-container::after {
-  bottom: 10px; /* コンテナのpadding-bottomに合わせる */
-  left: 10px; /* コンテナのpaddingに合わせる */
+  bottom: 10px;
+  left: 10px;
   right: 10px;
   transform: scaleX(1);
 }
-/* ★ 修正: コンテナがドロップ可能な場合（一番下へのドロップ）*/
 .settings-list-container.drag-over-container {
-  background: rgba(0, 0, 0, 0.4); /* ★ 修正: 0.35 -> 0.4 */
-  /* ★ 修正: コンテナ自体に内側のグローを追加 */
+  background: rgba(0, 0, 0, 0.4);
   box-shadow: inset 0 0 15px rgba(0, 198, 255, 0.7); 
 }
 /* ▲▲▲ D&D スタイル完了 ▲▲▲ */
@@ -480,9 +484,8 @@ button:disabled {
 }
 .settings-add-form .add-button:hover {
   transform: scale(1.1);
-  box-shadow: none; /* 親の button:hover を上書き */
+  box-shadow: none;
 }
-/* 幅広の追加ボタン (マイセット用) */
 .settings-add-form .add-button.wide-button {
   width: 100%;
   border-radius: 8px;
@@ -490,7 +493,7 @@ button:disabled {
 }
 /* ▼▼▼ 更新ボタンモード ▼▼▼ */
 .settings-add-form .add-button.update-mode {
-  background: linear-gradient(135deg, #ff8c00, #ff6600); /* オレンジ色 */
+  background: linear-gradient(135deg, #ff8c00, #ff6600);
 }
 .settings-add-form .add-button.update-mode:hover {
   background: linear-gradient(135deg, #ffa500, #ff7700);
@@ -520,7 +523,6 @@ button:disabled {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-top: 1.5rem;
 }
-/* フォーム内のレイアウト（縦積み） */
 .settings-add-form.glass-morph-inset {
   display: block; 
 }

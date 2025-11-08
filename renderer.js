@@ -6,14 +6,12 @@ let defaultNamingTemplate = '{date}_{category}_{project}_{version}';
 let activeNamingTemplate = '{date}_{category}_{project}_{version}';
 let allPresets = [];
 let allCustomTokens = []; 
-let allCategories = []; // 【追加】分類リストのキャッシュ
-let allProjects = []; // 【追加】プロジェクトリストのキャッシュ
+let allCategories = [];
+let allProjects = [];
 
-// 【追加】編集モード管理
 let editingItemId = null;
-let editingListType = null; // 'category', 'project', 'customToken', 'preset'
+let editingListType = null;
 
-// 【追加】D&D中のIDをグローバルに保持
 let draggedItemId = null;
 let draggedListType = null;
 
@@ -23,12 +21,18 @@ let filenamePreview, groupCategory, groupProject, groupFreetext;
 let notification;
 let presetSelect;
 let customTokensContainer; 
-let createButton; // ★ 改善提案1: createButton をキャッシュ
+let createButton; 
+let settingsModal; // ★ セキュリティ: モーダル要素
 
 // --- 通知表示用の関数 ---
 let notificationTimer = null;
 function showNotification(message, isError = false) {
   if (!notification) notification = document.getElementById('notification');
+  // ★ 堅牢性: notification が null の場合をガード
+  if (!notification) {
+    console.error("Notification element not found. Message:", message);
+    return;
+  }
   if (notificationTimer) clearTimeout(notificationTimer);
   notification.textContent = message;
   notification.className = isError ? 'show error' : 'show';
@@ -37,11 +41,33 @@ function showNotification(message, isError = false) {
   }, 3000);
 }
 
+/**
+ * ★ 堅牢性: 【新規】UI要素の存在を検証するヘルパー
+ * @param {Object<string, HTMLElement>} elements - { "要素名": 要素 } のオブジェクト
+ */
+function validateCriticalUIElements(elements) {
+  const missingElements = [];
+  for (const [name, element] of Object.entries(elements)) {
+    if (!element) {
+      missingElements.push(name);
+    }
+  }
+
+  if (missingElements.length > 0) {
+    const errorMsg = `致命的エラー: 必須UI要素が見つかりません: ${missingElements.join(', ')}. HTMLのid属性を確認してください。`;
+    console.error(errorMsg);
+    // ユーザーにもエラーを通知
+    showNotification(errorMsg, true); 
+    // これ以上実行するとクラッシュするため、ここで処理を中断
+    throw new Error(errorMsg); 
+  }
+}
+
 // --- ヘルパー関数: 分類・プロジェクトのドロップダウン生成 ---
 async function populateDropdown(selectId, getItemsFunction, addEmptyOption = false) {
   const selectElement = document.getElementById(selectId);
   if (!selectElement) return;
-  selectElement.innerHTML = ''; // クリア
+  selectElement.innerHTML = ''; 
   
   if (addEmptyOption) {
     const emptyOption = document.createElement('option');
@@ -53,7 +79,6 @@ async function populateDropdown(selectId, getItemsFunction, addEmptyOption = fal
   try {
     const options = await getItemsFunction(); 
     
-    // 【追加】キャッシュ更新 (populateDropdownが呼ばれるのはデータ更新時なので)
     if (getItemsFunction === window.myAPI.getCategories) allCategories = options;
     if (getItemsFunction === window.myAPI.getProjects) allProjects = options;
 
@@ -85,7 +110,7 @@ async function populatePresetsDropdown() {
   try {
     allPresets = await window.myAPI.getPresets();
     const currentSelectedValue = presetSelect.value;
-    presetSelect.innerHTML = ''; // クリア
+    presetSelect.innerHTML = ''; 
     
     const defaultOption = document.createElement('option');
     defaultOption.value = '';
@@ -115,59 +140,51 @@ async function loadAndRenderCustomTokens() {
     allCustomTokens = [];
   }
 
-  // 1. メインフォームのコンテナ
   if (!customTokensContainer) {
     customTokensContainer = document.getElementById('custom-tokens-container');
   }
-  customTokensContainer.innerHTML = ''; // クリア
+  customTokensContainer.innerHTML = ''; 
 
-  // 2. 設定モーダル（マイセット追加）のコンテナ
   const newPresetCustomContainer = document.getElementById('new-preset-custom-tokens-container');
   if (newPresetCustomContainer) {
-    newPresetCustomContainer.innerHTML = ''; // クリア
+    newPresetCustomContainer.innerHTML = '';
   }
 
   allCustomTokens.forEach(token => {
     const key = token.tokenName.replace(/[{}]/g, '');
 
-    // --- メインフォーム用の入力欄を生成 ---
+    // メインフォーム用
     const mainGroup = document.createElement('div');
     mainGroup.className = 'input-group';
-    
     const mainLabel = document.createElement('label');
     mainLabel.htmlFor = `custom_token_${token.id}`;
     mainLabel.textContent = `${token.label}:`;
     mainGroup.appendChild(mainLabel);
-
     const mainInput = document.createElement('input');
     mainInput.type = 'text';
     mainInput.id = `custom_token_${token.id}`;
-    mainInput.className = 'custom-token-input'; // CSSと選択用
-    mainInput.dataset.tokenKey = key; // キーを保存
+    mainInput.className = 'custom-token-input';
+    mainInput.dataset.tokenKey = key;
     mainInput.placeholder = `(${token.tokenName} の値)`;
     mainInput.addEventListener('input', updatePreview); 
     mainGroup.appendChild(mainInput);
-
     customTokensContainer.appendChild(mainGroup);
 
-    // --- 設定モーダル（マイセット追加）用の入力欄を生成 ---
+    // 設定モーダル用
     if (newPresetCustomContainer) {
       const presetGroup = document.createElement('div');
       presetGroup.className = 'input-group';
-
       const presetLabel = document.createElement('label');
       presetLabel.htmlFor = `new_preset_custom_token_${token.id}`;
       presetLabel.textContent = `${token.label} (プリセット値):`;
       presetGroup.appendChild(presetLabel);
-
       const presetInput = document.createElement('input');
       presetInput.type = 'text';
       presetInput.id = `new_preset_custom_token_${token.id}`;
-      presetInput.className = 'new-preset-custom-input'; // CSSと選択用
-      presetInput.dataset.tokenKey = key; // キーを保存
+      presetInput.className = 'new-preset-custom-input';
+      presetInput.dataset.tokenKey = key;
       presetInput.placeholder = `（オプション）`;
       presetGroup.appendChild(presetInput);
-      
       newPresetCustomContainer.appendChild(presetGroup);
     }
   });
@@ -178,15 +195,10 @@ function resetAddForms() {
   editingItemId = null;
   editingListType = null;
 
-  // 全ての追加フォームの入力欄をクリア
-  // 分類
   document.getElementById('new-category-input').value = '';
-  // プロジェクト
   document.getElementById('new-project-input').value = '';
-  // カスタムトークン
   document.getElementById('new-token-name').value = '';
   document.getElementById('new-token-label').value = '';
-  // マイセット
   document.getElementById('new-preset-name').value = '';
   document.getElementById('new-preset-saveDir').value = '';
   document.getElementById('new-preset-template').value = '';
@@ -198,7 +210,6 @@ function resetAddForms() {
     input.value = '';
   });
 
-  // 全てのボタンを「追加」モードに戻す
   setButtonMode(document.getElementById('add-category-button'), 'add');
   setButtonMode(document.getElementById('add-project-button'), 'add');
   setButtonMode(document.getElementById('add-token-button'), 'add');
@@ -208,9 +219,7 @@ function resetAddForms() {
 // --- 【新規】ヘルパー関数: ボタンのモード切り替え ---
 function setButtonMode(buttonElement, mode) { // mode: 'add' or 'update'
   if (!buttonElement) return;
-  
   const isWide = buttonElement.classList.contains('wide-button');
-  
   if (mode === 'update') {
     buttonElement.classList.add('update-mode');
     if (isWide) {
@@ -221,12 +230,11 @@ function setButtonMode(buttonElement, mode) { // mode: 'add' or 'update'
   } else { // 'add'
     buttonElement.classList.remove('update-mode');
     if (isWide) {
-      buttonElement.innerHTML = '<i class="fas fa-plus"></i> このセットを追加'; // マイセット/トークン固有
+      buttonElement.innerHTML = '<i class="fas fa-plus"></i> このセットを追加';
     } else {
-      buttonElement.textContent = '+'; // 分類/プロジェクト固有
+      buttonElement.textContent = '+';
     }
   }
-  // トークン追加ボタンのテキストを修正
   if (buttonElement.id === 'add-token-button') {
     buttonElement.innerHTML = mode === 'update' ? '<i class="fas fa-save"></i> このトークンを更新' : '<i class="fas fa-plus"></i> このトークンを追加';
   }
@@ -234,13 +242,9 @@ function setButtonMode(buttonElement, mode) { // mode: 'add' or 'update'
 
 // --- 【新規】ヘルパー関数: アイテムを編集フォームに読み込む ---
 function loadItemForEditing(listType, itemId) {
-  // 編集状態を設定
   editingItemId = itemId;
   editingListType = listType;
-
-  // 他のフォームをリセット（ボタンテキストなどを戻すため）
   resetAddForms();
-  // 再度、編集状態を設定
   editingItemId = itemId;
   editingListType = listType;
 
@@ -250,13 +254,11 @@ function loadItemForEditing(listType, itemId) {
       setButtonMode(document.getElementById('add-category-button'), 'update');
       document.getElementById('new-category-input').focus();
       break;
-    
     case 'project':
       document.getElementById('new-project-input').value = itemId;
       setButtonMode(document.getElementById('add-project-button'), 'update');
       document.getElementById('new-project-input').focus();
       break;
-
     case 'customToken':
       const token = allCustomTokens.find(t => t.id === itemId);
       if (token) {
@@ -266,24 +268,20 @@ function loadItemForEditing(listType, itemId) {
         document.getElementById('new-token-name').focus();
       }
       break;
-
     case 'preset':
       const preset = allPresets.find(p => p.id === itemId);
       if (preset) {
         document.getElementById('new-preset-name').value = preset.setName;
         document.getElementById('new-preset-saveDir').value = preset.saveDir;
         document.getElementById('new-preset-template').value = preset.template;
-        
         const values = preset.presetValues || {};
         document.getElementById('new-preset-category').value = values.category || '';
         document.getElementById('new-preset-project').value = values.project || '';
         document.getElementById('new-preset-extension').value = values.extension || '';
         document.getElementById('new-preset-freetext').value = values.free_text || '';
-        
         document.querySelectorAll('#new-preset-custom-tokens-container .new-preset-custom-input').forEach(input => {
           input.value = values[input.dataset.tokenKey] || '';
         });
-        
         setButtonMode(document.getElementById('add-preset-button'), 'update');
         document.getElementById('new-preset-name').focus();
       }
@@ -337,23 +335,19 @@ function collectFormValues() {
     project: projectSelect.value,
     free_text: freetextInput.value
   };
-
-  // 動的に生成されたカスタムトークン入力から値を取得
   const customTokenElements = document.querySelectorAll('#custom-tokens-container .custom-token-input');
   customTokenElements.forEach(input => {
-    const tokenKey = input.dataset.tokenKey; // (例: "client")
+    const tokenKey = input.dataset.tokenKey;
     values[tokenKey] = input.value;
   });
-  
   return values;
 }
 
 
-// --- 【変更】ヘルパー関数: プレビュー更新 (★ 改善提案1: ボタン制御追加) ---
+// --- 【変更】ヘルパー関数: プレビュー更新 ---
 async function updatePreview() {
   if (!filenamePreview) return; 
 
-  // ★ 改善提案1: 必須項目チェック
   const isReady = selectedSaveDir && extensionSelect.value;
   
   if (createButton) {
@@ -365,7 +359,6 @@ async function updatePreview() {
     filenamePreview.classList.add('error');
     return;
   }
-  // ★ 改善提案1 ここまで
 
   const values = collectFormValues();
   const extension = extensionSelect.value; 
@@ -399,7 +392,6 @@ async function refreshSettingsList(listId, getItemsFunction, updateItemsFunction
   try {
     const items = await getItemsFunction();
     
-    // 【変更】キャッシュ更新
     let currentCache = [];
     if (listType === 'category') {
       allCategories = items;
@@ -415,12 +407,11 @@ async function refreshSettingsList(listId, getItemsFunction, updateItemsFunction
       listElement.innerHTML = '<li>アイテムはありません</li>';
     }
 
-    // --- 【★追加★】コンテナ（一番下）へのD&Dイベント ---
+    // コンテナ（一番下）へのD&Dイベント
     listContainer.ondragover = (e) => {
       e.preventDefault();
       if (draggedListType === listType) {
         e.dataTransfer.dropEffect = 'move';
-        // アイテム上のハイライトは消す
         document.querySelectorAll(`#${listId} li`).forEach(li => {
           li.classList.remove('drag-over-top', 'drag-over-bottom');
         });
@@ -440,18 +431,14 @@ async function refreshSettingsList(listId, getItemsFunction, updateItemsFunction
 
       const draggedIndex = currentCache.findIndex(item => item === draggedItemId);
       if (draggedIndex === -1 || draggedIndex === currentCache.length - 1) {
-        // 見つからない or 既に一番下
         draggedItemId = null;
         draggedListType = null;
         return;
       }
       
-      // 配列から削除
       const [draggedItem] = currentCache.splice(draggedIndex, 1);
-      // 配列の末尾に追加
       currentCache.push(draggedItem);
       
-      // API呼び出し
       const result = await updateItemsFunction(currentCache);
       if (result.success) {
         refreshSettingsList(listId, getItemsFunction, updateItemsFunction);
@@ -468,9 +455,9 @@ async function refreshSettingsList(listId, getItemsFunction, updateItemsFunction
     items.forEach((itemText, index) => {
       const li = document.createElement('li');
       
-      // --- 【★追加★】D&Dイベント (li) ---
+      // D&Dイベント (li)
       li.draggable = true;
-      li.dataset.itemId = itemText; // IDとして項目名をそのまま使用
+      li.dataset.itemId = itemText; 
 
       li.addEventListener('dragstart', (e) => {
         draggedItemId = itemText;
@@ -486,10 +473,9 @@ async function refreshSettingsList(listId, getItemsFunction, updateItemsFunction
         draggedListType = null;
       });
 
-      // ▼▼▼ 修正 ▼▼▼
       li.addEventListener('dragover', (e) => {
         e.preventDefault();
-        e.stopPropagation(); // ★★★ 修正: イベントの伝播を停止 ★★★
+        e.stopPropagation(); 
         
         if (draggedListType !== listType) {
           e.dataTransfer.dropEffect = 'none';
@@ -512,7 +498,6 @@ async function refreshSettingsList(listId, getItemsFunction, updateItemsFunction
         }
         listContainer.classList.remove('drag-over-container');
       });
-      // ▲▲▲ 修正完了 ▲▲▲
       
       li.addEventListener('dragleave', () => {
         li.classList.remove('drag-over-top', 'drag-over-bottom');
@@ -535,7 +520,7 @@ async function refreshSettingsList(listId, getItemsFunction, updateItemsFunction
         const rect = li.getBoundingClientRect();
         const midY = rect.top + rect.height / 2;
         if (e.clientY > midY) {
-          droppedIndex++; // 下半分にドロップ: インデックスを+1
+          droppedIndex++;
         }
         
         const newItems = [...currentCache];
@@ -555,8 +540,6 @@ async function refreshSettingsList(listId, getItemsFunction, updateItemsFunction
         draggedItemId = null;
         draggedListType = null;
       });
-      // --- D&D (li) ここまで ---
-
       
       const contentDiv = document.createElement('div');
       contentDiv.className = 'item-content';
@@ -566,26 +549,26 @@ async function refreshSettingsList(listId, getItemsFunction, updateItemsFunction
       const controlsDiv = document.createElement('div');
       controlsDiv.className = 'item-controls';
 
-      // --- 【★削除★】「上へ」「下へ」ボタンのロジックを削除 ---
-      
-      // --- 編集ボタン ---
+      // 編集ボタン
       const editButton = document.createElement('button');
       editButton.className = 'list-button edit-item-button';
       editButton.title = '編集';
       editButton.innerHTML = '<i class="fas fa-pencil-alt"></i>';
       editButton.addEventListener('click', () => {
-        loadItemForEditing(listType, itemText); // itemText が ID の代わり
+        loadItemForEditing(listType, itemText);
       });
       controlsDiv.appendChild(editButton);
       
-      // --- 削除ボタン ---
+      // 削除ボタン
       const deleteButton = document.createElement('button');
       deleteButton.className = 'list-button delete-item-button';
       deleteButton.title = '削除';
       deleteButton.innerHTML = '<i class="fas fa-trash"></i>';
       
       deleteButton.addEventListener('click', async () => {
-        if (!confirm(`「${itemText}」を削除しますか？`)) {
+        // ★ セキュリティ: ネイティブダイアログに変更
+        const confirmed = await window.myAPI.showConfirmationDialog(`「${itemText}」を削除しますか？`);
+        if (!confirmed) {
           return;
         }
         const newItems = items.filter((_, i) => i !== index);
@@ -593,8 +576,7 @@ async function refreshSettingsList(listId, getItemsFunction, updateItemsFunction
         if (result.success) {
           showNotification('削除しました', false);
           refreshSettingsList(listId, getItemsFunction, updateItemsFunction);
-          refreshMainDropdowns(); // メインフォームも更新
-          // 【追加】マイセットのドロップダウンも更新
+          refreshMainDropdowns();
           if (listId === 'categories-list') populateDropdown('new-preset-category', window.myAPI.getCategories, true);
           if (listId === 'projects-list') populateDropdown('new-preset-project', window.myAPI.getProjects, true);
         } else {
@@ -621,13 +603,13 @@ async function refreshCustomTokensList() {
 
   try {
     allCustomTokens = await window.myAPI.getCustomTokens();
-    listElement.innerHTML = ''; // クリア
+    listElement.innerHTML = ''; 
 
     if (allCustomTokens.length === 0) {
       listElement.innerHTML = '<li>アイテムはありません</li>';
     }
 
-    // --- 【★追加★】コンテナ（一番下）へのD&Dイベント ---
+    // コンテナ（一番下）へのD&Dイベント
     listContainer.ondragover = (e) => {
       e.preventDefault();
       if (draggedListType === listType) {
@@ -674,7 +656,7 @@ async function refreshCustomTokensList() {
     allCustomTokens.forEach((token, index) => {
       const li = document.createElement('li');
       
-      // --- 【★追加★】D&Dイベント (li) ---
+      // D&Dイベント (li)
       li.draggable = true;
       li.dataset.itemId = token.id;
 
@@ -692,10 +674,9 @@ async function refreshCustomTokensList() {
         draggedListType = null;
       });
 
-      // ▼▼▼ 修正 ▼▼▼
       li.addEventListener('dragover', (e) => {
         e.preventDefault();
-        e.stopPropagation(); // ★★★ 修正: イベントの伝播を停止 ★★★
+        e.stopPropagation();
 
         if (draggedListType !== listType) {
           e.dataTransfer.dropEffect = 'none';
@@ -718,7 +699,6 @@ async function refreshCustomTokensList() {
         }
         listContainer.classList.remove('drag-over-container');
       });
-      // ▲▲▲ 修正完了 ▲▲▲
       
       li.addEventListener('dragleave', () => {
         li.classList.remove('drag-over-top', 'drag-over-bottom');
@@ -741,7 +721,7 @@ async function refreshCustomTokensList() {
         const rect = li.getBoundingClientRect();
         const midY = rect.top + rect.height / 2;
         if (e.clientY > midY) {
-          droppedIndex++; // 下半分にドロップ: インデックスを+1
+          droppedIndex++;
         }
         
         const newItems = [...allCustomTokens];
@@ -760,20 +740,18 @@ async function refreshCustomTokensList() {
         draggedItemId = null;
         draggedListType = null;
       });
-      // --- D&D (li) ここまで ---
-      
       
       const contentDiv = document.createElement('div');
       contentDiv.className = 'item-content';
       
       const nameSpan = document.createElement('span');
       nameSpan.className = 'token-name';
-      nameSpan.textContent = token.tokenName; // {client}
+      nameSpan.textContent = token.tokenName;
       contentDiv.appendChild(nameSpan);
 
       const labelSpan = document.createElement('span');
       labelSpan.className = 'token-label';
-      labelSpan.textContent = `Label: ${token.label}`; // 顧客名
+      labelSpan.textContent = `Label: ${token.label}`;
       contentDiv.appendChild(labelSpan);
       
       li.appendChild(contentDiv);
@@ -781,9 +759,7 @@ async function refreshCustomTokensList() {
       const controlsDiv = document.createElement('div');
       controlsDiv.className = 'item-controls';
 
-      // --- 【★削除★】「上へ」「下へ」ボタンのロジックを削除 ---
-      
-      // --- 編集ボタン ---
+      // 編集ボタン
       const editButton = document.createElement('button');
       editButton.className = 'list-button edit-item-button';
       editButton.title = '編集';
@@ -793,21 +769,23 @@ async function refreshCustomTokensList() {
       });
       controlsDiv.appendChild(editButton);
 
-      // --- 削除ボタン ---
+      // 削除ボタン
       const deleteButton = document.createElement('button');
       deleteButton.className = 'list-button delete-item-button';
       deleteButton.title = '削除';
       deleteButton.innerHTML = '<i class="fas fa-trash"></i>';
       deleteButton.addEventListener('click', async () => {
-        if (!confirm(`トークン「${token.tokenName}」を削除しますか？`)) {
+        // ★ セキュリティ: ネイティブダイアログに変更
+        const confirmed = await window.myAPI.showConfirmationDialog(`トークン「${token.tokenName}」を削除しますか？`);
+        if (!confirmed) {
           return;
         }
         const newTokens = allCustomTokens.filter((_, i) => i !== index);
         const result = await window.myAPI.updateCustomTokens(newTokens);
         if (result.success) {
           showNotification('削除しました', false);
-          refreshCustomTokensList(); // このリストを更新
-          loadAndRenderCustomTokens(); // メインフォームとマイセットフォームも更新
+          refreshCustomTokensList();
+          loadAndRenderCustomTokens();
         } else {
           showNotification('削除に失敗しました', true);
         }
@@ -835,13 +813,13 @@ async function refreshPresetsList() {
 
   try {
     allPresets = await window.myAPI.getPresets();
-    listElement.innerHTML = ''; // クリア
+    listElement.innerHTML = '';
 
     if (allPresets.length === 0) {
       listElement.innerHTML = '<li>アイテムはありません</li>';
     }
 
-    // --- 【★追加★】コンテナ（一番下）へのD&Dイベント ---
+    // コンテナ（一番下）へのD&Dイベント
     listContainer.ondragover = (e) => {
       e.preventDefault();
       if (draggedListType === listType) {
@@ -888,9 +866,9 @@ async function refreshPresetsList() {
     allPresets.forEach((preset, index) => {
       const li = document.createElement('li');
       
-      // --- 【★変更★】D&Dイベント (li) ---
+      // D&Dイベント (li)
       li.draggable = true;
-      li.dataset.itemId = preset.id; // dataset.presetId から汎用的な名前に
+      li.dataset.itemId = preset.id; 
 
       li.addEventListener('dragstart', (e) => {
         draggedItemId = preset.id;
@@ -906,10 +884,9 @@ async function refreshPresetsList() {
         draggedListType = null;
       });
 
-      // ▼▼▼ 修正 ▼▼▼
       li.addEventListener('dragover', (e) => {
         e.preventDefault();
-        e.stopPropagation(); // ★★★ 修正: イベントの伝播を停止 ★★★
+        e.stopPropagation(); 
 
         if (draggedListType !== listType) {
           e.dataTransfer.dropEffect = 'none';
@@ -932,7 +909,6 @@ async function refreshPresetsList() {
         }
         listContainer.classList.remove('drag-over-container');
       });
-      // ▲▲▲ 修正完了 ▲▲▲
       
       li.addEventListener('dragleave', () => {
         li.classList.remove('drag-over-top', 'drag-over-bottom');
@@ -955,7 +931,7 @@ async function refreshPresetsList() {
         const rect = li.getBoundingClientRect();
         const midY = rect.top + rect.height / 2;
         if (e.clientY > midY) {
-          droppedIndex++; // 下半分にドロップ: インデックスを+1
+          droppedIndex++;
         }
         
         const newItems = [...allPresets];
@@ -974,8 +950,6 @@ async function refreshPresetsList() {
         draggedItemId = null;
         draggedListType = null;
       });
-      // --- D&D (li) ここまで ---
-
 
       const contentDiv = document.createElement('div');
       contentDiv.className = 'item-content';
@@ -995,9 +969,7 @@ async function refreshPresetsList() {
       const controlsDiv = document.createElement('div');
       controlsDiv.className = 'item-controls';
 
-      // --- 【★削除★】「上へ」「下へ」ボタンのロジックを削除 ---
-
-      // --- 【★変更★】編集ボタン (順序変更) ---
+      // 編集ボタン
       const editButton = document.createElement('button');
       editButton.className = 'list-button edit-item-button';
       editButton.title = '編集';
@@ -1007,13 +979,15 @@ async function refreshPresetsList() {
       });
       controlsDiv.appendChild(editButton);
 
-      // --- 削除ボタン ---
+      // 削除ボタン
       const deleteButton = document.createElement('button');
       deleteButton.className = 'list-button delete-item-button';
       deleteButton.title = '削除';
       deleteButton.innerHTML = '<i class="fas fa-trash"></i>';
       deleteButton.addEventListener('click', async () => {
-        if (!confirm(`マイセット「${preset.setName}」を削除しますか？`)) {
+        // ★ セキュリティ: ネイティブダイアログに変更
+        const confirmed = await window.myAPI.showConfirmationDialog(`マイセット「${preset.setName}」を削除しますか？`);
+        if (!confirmed) {
           return;
         }
         const newPresets = allPresets.filter((_, i) => i !== index);
@@ -1038,17 +1012,14 @@ async function refreshPresetsList() {
   }
 }
 
-// ★ 改善提案2: 最後に使用したプリセットIDを保存するヘルパー関数
+// 最後に使用したプリセットIDを保存するヘルパー関数
 async function saveLastUsedPreset(presetId) {
     try {
-        // 現在の設定を取得
         const config = await window.myAPI.getConfig();
-        // プリセットIDだけ更新して保存
         config.lastUsedPresetId = presetId || '';
         await window.myAPI.updateConfig(config);
     } catch (err) {
         console.error('最後のプリセット保存に失敗:', err);
-        // このエラーはユーザー通知しない（バックグラウンド処理のため）
     }
 }
 
@@ -1056,7 +1027,7 @@ async function saveLastUsedPreset(presetId) {
 window.addEventListener('DOMContentLoaded', async () => {
   
   // --- UI要素の取得 (メインフォーム) ---
-  createButton = document.getElementById('create-button'); // ★ 改善提案1: キャッシュ
+  createButton = document.getElementById('create-button');
   const selectDirButton = document.getElementById('select-dir-button');
   saveDirText = document.getElementById('save_dir');
   categorySelect = document.getElementById('attr_category');
@@ -1073,10 +1044,21 @@ window.addEventListener('DOMContentLoaded', async () => {
   customTokensContainer = document.getElementById('custom-tokens-container');
 
   // --- UI要素の取得 (設定モーダル - 主要なもの) ---
-  const settingsModal = document.getElementById('settings-modal');
+  settingsModal = document.getElementById('settings-modal'); // ★ グローバルスコープに
   const openSettingsButton = document.getElementById('open-settings-button');
   const closeSettingsButton = document.getElementById('close-settings-button');
-  // (設定モーダル内の詳細な要素は、モーダルを開くときに取得・操作する)
+
+  // ★ 堅牢性: 必須UI要素の存在チェック
+  try {
+    validateCriticalUIElements({
+      createButton, selectDirButton, saveDirText, categorySelect, projectSelect,
+      extensionSelect, presetSelect, filenamePreview, notification,
+      customTokensContainer, settingsModal, openSettingsButton, closeSettingsButton,
+      groupCategory, groupProject, groupFreetext
+    });
+  } catch (err) {
+    return; // 必須要素がないため、アプリを初期化しない
+  }
 
 
   // --- メインフォームのドロップダウンを初期化 ---
@@ -1092,16 +1074,10 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // --- 【変更】初期化処理 ---
   async function initializeApp() {
-    // 1. カスタムトークンを読み込み、フォームを生成 (最優先)
     await loadAndRenderCustomTokens();
-    
-    // 2. メインのドロップダウンを初期化
     await refreshMainDropdowns();
-    
-    // 3. マイセットドロップダウンを初期化
     await populatePresetsDropdown();
 
-    // 4. デフォルト設定を読み込み
     try {
       const config = await window.myAPI.getConfig();
       if (config.defaultSavePath) {
@@ -1111,16 +1087,13 @@ window.addEventListener('DOMContentLoaded', async () => {
       defaultNamingTemplate = config.namingTemplate || '{date}_{category}_{project}_{version}';
       activeNamingTemplate = defaultNamingTemplate;
       
-      // ★ 改善提案2: 最後に使用したプリセットを適用
       if (config.lastUsedPresetId) {
           presetSelect.value = config.lastUsedPresetId;
-          // イベントを手動で発火させてプリセット値を読み込む
           presetSelect.dispatchEvent(new Event('change', { bubbles: true }));
       }
 
-      // 5. フォーム表示とプレビューを最終更新
       updateFormVisibility(activeNamingTemplate);
-      updatePreview(); // ★ 改善提案1: これによりボタンの有効/無効も初期化される
+      updatePreview(); 
 
     } catch (err) {
       console.error('設定の読み込みに失敗', err);
@@ -1147,37 +1120,31 @@ window.addEventListener('DOMContentLoaded', async () => {
   // (2) メインフォーム: 「ファイル作成」
   createButton.addEventListener('click', async () => {
     
-    // ▼▼▼ 修正: ローディングボタン化 ▼▼▼
-    const originalButtonHTML = createButton.innerHTML; // ★ アイコンを保持するため textContent から変更
+    const originalButtonHTML = createButton.innerHTML;
     createButton.disabled = true;
-    createButton.innerHTML = '作成中...'; // ★ innerHTML に変更
-    // ▲▲▲ 修正完了 ▲▲▲
+    createButton.innerHTML = '作成中...';
 
     const values = collectFormValues();
     const data = {
       saveDir: selectedSaveDir,
-      extension: extensionSelect.value, // 【変更】フォームから拡張子を取得
+      extension: extensionSelect.value,
       description: descriptionInput.value,
       template: activeNamingTemplate,
       values: values
     };
 
-    try { // ▼▼▼ 修正: try...finally ▼▼▼
+    try {
       const result = await window.myAPI.createFile(data);
 
       if (result.success) {
         showNotification(result.message, false);
         descriptionInput.value = ''; 
         freetextInput.value = ''; 
-        // 【変更】カスタムトークン入力欄もクリア
         document.querySelectorAll('#custom-tokens-container .custom-token-input').forEach(input => {
           input.value = '';
         });
-        
-        // ★ 改善提案2: 作成成功時にも、現在のプリセットIDを保存
         saveLastUsedPreset(presetSelect.value);
-        
-        updatePreview(); // 次のバージョンを表示
+        updatePreview();
       } else {
         showNotification(result.message, true);
       }
@@ -1185,12 +1152,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       console.error('Create file API error:', err);
       showNotification(`ファイル作成に失敗しました: ${err.message}`, true);
     } finally {
-      // ▼▼▼ 修正: ボタンを元に戻す ▼▼▼
       createButton.disabled = false;
-      createButton.innerHTML = originalButtonHTML; // ★ innerHTML に変更
-      // ★ 改善提案1: ボタンの状態を再評価
+      createButton.innerHTML = originalButtonHTML;
       updatePreview(); 
-      // ▲▲▲ 修正完了 ▲▲▲
     }
   });
 
@@ -1207,11 +1171,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       const importSettingsButton = document.getElementById('import-settings-button');
       const exportSettingsButton = document.getElementById('export-settings-button');
       const browseDefaultPathButton = document.getElementById('browse-default-path-button');
-      // カスタムトークン
       const newTokenName = document.getElementById('new-token-name');
       const newTokenLabel = document.getElementById('new-token-label');
       const addTokenButton = document.getElementById('add-token-button');
-      // マイセット
       const newPresetName = document.getElementById('new-preset-name');
       const newPresetSaveDir = document.getElementById('new-preset-saveDir');
       const newPresetTemplate = document.getElementById('new-preset-template');
@@ -1219,58 +1181,39 @@ window.addEventListener('DOMContentLoaded', async () => {
       const addPresetButton = document.getElementById('add-preset-button');
       const newPresetCategory = document.getElementById('new-preset-category');
       const newPresetProject = document.getElementById('new-preset-project');
-      const newPresetExtension = document.getElementById('new-preset-extension'); // ★ 追加
+      const newPresetExtension = document.getElementById('new-preset-extension');
       const newPresetFreetext = document.getElementById('new-preset-freetext');
 
-
       // --- モーダルを開くときの初期化処理 ---
-      
-      // 【追加】フォーム状態をリセット
       resetAddForms();
 
       try {
-        // 1. config.json 読み込み
         const config = await window.myAPI.getConfig();
         authorInput.value = config.author || '';
         defaultPathInput.value = config.defaultSavePath || '';
         namingTemplateInput.value = config.namingTemplate || '{date}_{category}_{project}_{version}';
-        
-        // 2. グローバル変数をリセット
         defaultNamingTemplate = config.namingTemplate || '{date}_{category}_{project}_{version}';
-        // ★ 改善提案2: activeNamingTemplate はメインフォームの値(プリセット)を維持するため、ここではリセットしない
-        // activeNamingTemplate = defaultNamingTemplate; 
-        
-        // 3. メインフォームのマイセット選択はそのまま
-        // presetSelect.value = '';
-        
       } catch (err) {
         showNotification('設定の読み込みに失敗', true);
       }
       
-      // 4. カスタムトークンフォームを再生成 (最新の定義を読み込むため)
       await loadAndRenderCustomTokens();
-      
-      // 5. マイセットのプリセット用ドロップダウンを生成
       await populateDropdown('new-preset-category', window.myAPI.getCategories, true);
       await populateDropdown('new-preset-project', window.myAPI.getProjects, true);
-      await populateDropdown('new-preset-extension', window.myAPI.getExtensions, true); // ★ 追加
-
-      // 6. 全てのリストを更新
+      await populateDropdown('new-preset-extension', window.myAPI.getExtensions, true);
       refreshSettingsList('categories-list', window.myAPI.getCategories, window.myAPI.updateCategories);
       refreshSettingsList('projects-list', window.myAPI.getProjects, window.myAPI.updateProjects);
-      refreshCustomTokensList(); // カスタムトークンリスト
-      refreshPresetsList(); // マイセットリスト
+      refreshCustomTokensList();
+      refreshPresetsList();
 
-      // 7. モーダルを表示
-      settingsModal.style.display = 'flex';
+      // ★ セキュリティ: クラスで表示を切り替え
+      settingsModal.classList.add('show');
       
-      // 8. 【★ 修正 ★】モーダル表示後、最初の入力欄にフォーカスを当てる
       if (authorInput) {
         authorInput.focus();
       }
       
       // --- このモーダル内だけで完結するイベントリスナーを登録 ---
-      // ※ closeButton などは外側のスコープで登録済
 
       // (5) 分類を追加
       addCategoryButton.onclick = async () => {
@@ -1279,18 +1222,11 @@ window.addEventListener('DOMContentLoaded', async () => {
         
         let result;
         if (editingItemId && editingListType === 'category') {
-          // --- 更新処理 ---
-          if (newItem === editingItemId) { // 名前が変わっていない
-            resetAddForms();
-            return;
-          }
+          if (newItem === editingItemId) { resetAddForms(); return; }
           if (allCategories.includes(newItem)) return showNotification('エラー: その名前は既に使用されています', true);
-          
           const newItems = allCategories.map(item => (item === editingItemId ? newItem : item));
           result = await window.myAPI.updateCategories(newItems);
-
         } else {
-          // --- 追加処理 ---
           if (allCategories.includes(newItem)) return showNotification('エラー: その名前は既に使用されています', true);
           const newItems = [...allCategories, newItem];
           result = await window.myAPI.updateCategories(newItems);
@@ -1301,7 +1237,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           resetAddForms();
           refreshSettingsList('categories-list', window.myAPI.getCategories, window.myAPI.updateCategories);
           refreshMainDropdowns();
-          populateDropdown('new-preset-category', window.myAPI.getCategories, true); // マイセット用も更新
+          populateDropdown('new-preset-category', window.myAPI.getCategories, true);
         } else {
           showNotification(editingItemId ? '更新に失敗しました' : '追加に失敗しました', true);
         }
@@ -1314,18 +1250,11 @@ window.addEventListener('DOMContentLoaded', async () => {
 
         let result;
         if (editingItemId && editingListType === 'project') {
-          // --- 更新処理 ---
-          if (newItem === editingItemId) {
-            resetAddForms();
-            return;
-          }
+          if (newItem === editingItemId) { resetAddForms(); return; }
           if (allProjects.includes(newItem)) return showNotification('エラー: その名前は既に使用されています', true);
-          
           const newItems = allProjects.map(item => (item === editingItemId ? newItem : item));
           result = await window.myAPI.updateProjects(newItems);
-
         } else {
-          // --- 追加処理 ---
           if (allProjects.includes(newItem)) return showNotification('エラー: その名前は既に使用されています', true);
           const newItems = [...allProjects, newItem];
           result = await window.myAPI.updateProjects(newItems);
@@ -1336,7 +1265,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           resetAddForms();
           refreshSettingsList('projects-list', window.myAPI.getProjects, window.myAPI.updateProjects);
           refreshMainDropdowns();
-          populateDropdown('new-preset-project', window.myAPI.getProjects, true); // マイセット用も更新
+          populateDropdown('new-preset-project', window.myAPI.getProjects, true);
         } else {
           showNotification(editingItemId ? '更新に失敗しました' : '追加に失敗しました', true);
         }
@@ -1350,16 +1279,16 @@ window.addEventListener('DOMContentLoaded', async () => {
 
       // (8) インポート
       importSettingsButton.onclick = async () => {
-        if (!confirm('現在の設定は上書きされます。よろしいですか？')) return;
+        // ★ セキュリティ: ネイティブダイアログに変更
+        const confirmed = await window.myAPI.showConfirmationDialog('現在の設定は上書きされます。よろしいですか？');
+        if (!confirmed) return;
         
         const result = await window.myAPI.importSettings();
         showNotification(result.message, !result.success);
         
         if (result.success) {
-          // インポート成功時、モーダル全体を再初期化
-          resetAddForms(); // 編集状態をリセット
-          openSettingsButton.click(); // 自身を再度クリックして全体をリロード
-          // メインフォームもリロード
+          resetAddForms();
+          openSettingsButton.click(); 
           initializeApp();
         }
       };
@@ -1381,45 +1310,25 @@ window.addEventListener('DOMContentLoaded', async () => {
         const setName = newPresetName.value.trim();
         const saveDir = newPresetSaveDir.value.trim();
         const template = newPresetTemplate.value.trim();
-
         if (!setName || !saveDir || !template) return showNotification('セット名、保存先、テンプレートは必須です', true);
         
-        // {version} 必須チェックは削除済み
-        
-        // プリセット値の収集
         const presetValues = {
           category: newPresetCategory.value,
           project: newPresetProject.value,
-          extension: newPresetExtension.value, // ★ 追加
+          extension: newPresetExtension.value,
           free_text: newPresetFreetext.value
         };
-
-        // カスタムトークンのプリセット値も収集
         document.querySelectorAll('#new-preset-custom-tokens-container .new-preset-custom-input').forEach(input => {
           presetValues[input.dataset.tokenKey] = input.value;
         });
 
         let result;
         if (editingItemId && editingListType === 'preset') {
-          // --- 更新処理 ---
-          const updatedPreset = {
-            id: editingItemId, // 既存のID
-            setName: setName,
-            saveDir: saveDir,
-            template: template,
-            presetValues: presetValues
-          };
+          const updatedPreset = { id: editingItemId, setName, saveDir, template, presetValues };
           const newPresets = allPresets.map(p => (p.id === editingItemId ? updatedPreset : p));
           result = await window.myAPI.updatePresets(newPresets);
         } else {
-          // --- 追加処理 ---
-          const newPreset = {
-            id: Date.now().toString(),
-            setName: setName,
-            saveDir: saveDir,
-            template: template,
-            presetValues: presetValues 
-          };
+          const newPreset = { id: Date.now().toString(), setName, saveDir, template, presetValues };
           const newPresets = [...allPresets, newPreset];
           result = await window.myAPI.updatePresets(newPresets);
         }
@@ -1427,7 +1336,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (result.success) {
           showNotification(editingItemId ? '更新しました' : '追加しました', false);
           resetAddForms();
-          // リストを更新
           refreshPresetsList();
           populatePresetsDropdown();
         } else {
@@ -1445,28 +1353,18 @@ window.addEventListener('DOMContentLoaded', async () => {
         
         let result;
         if (editingItemId && editingListType === 'customToken') {
-          // --- 更新処理 ---
           const existingToken = allCustomTokens.find(t => t.id === editingItemId);
-          // トークン名が変更されたかチェック
           if (existingToken.tokenName !== tokenName) {
-            // 変更後の名前が他と重複していないかチェック
             if (allCustomTokens.some(t => t.tokenName === tokenName && t.id !== editingItemId)) {
               return showNotification('エラー: そのトークン名は既に使用されています', true);
             }
           }
-          
-          const updatedToken = { id: editingItemId, tokenName: tokenName, label: tokenLabel };
+          const updatedToken = { id: editingItemId, tokenName, label: tokenLabel };
           const newTokens = allCustomTokens.map(t => (t.id === editingItemId ? updatedToken : t));
           result = await window.myAPI.updateCustomTokens(newTokens);
-        
         } else {
-          // --- 追加処理 ---
           if (allCustomTokens.some(t => t.tokenName === tokenName)) return showNotification('エラー: そのトークン名は既に使用されています', true);
-          const newToken = {
-            id: Date.now().toString(),
-            tokenName: tokenName,
-            label: tokenLabel
-          };
+          const newToken = { id: Date.now().toString(), tokenName, label: tokenLabel };
           const newTokens = [...allCustomTokens, newToken];
           result = await window.myAPI.updateCustomTokens(newTokens);
         }
@@ -1474,16 +1372,15 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (result.success) {
           showNotification(editingItemId ? '更新しました' : '追加しました', false);
           resetAddForms();
-          refreshCustomTokensList(); // 設定リストを更新
-          loadAndRenderCustomTokens(); // メインフォームとマイセットフォームを更新
+          refreshCustomTokensList();
+          loadAndRenderCustomTokens();
         } else {
           showNotification(editingItemId ? '更新に失敗しました' : '追加に失敗しました', true);
         }
       };
-
   });
 
-  // (4) 設定モーダル: 「閉じる」ボタン (★ 改善提案2: lastUsedPresetId をクリア)
+  // (4) 設定モーダル: 「閉じる」ボタン
   closeSettingsButton.addEventListener('click', async () => {
     const namingTemplateInput = document.getElementById('naming-template-input');
     const authorInput = document.getElementById('author-input');
@@ -1492,37 +1389,30 @@ window.addEventListener('DOMContentLoaded', async () => {
     const template = namingTemplateInput.value.trim();
     
     try {
+      // ★ 修正: 既存のconfigを読み込み、lastUsedPresetId を上書きしないようにする
+      const config = await window.myAPI.getConfig(); 
       const configToSave = {
+        ...config, // 既存の値 (lastUsedPresetIdを含む) を継承
         author: authorInput.value.trim(),
         defaultSavePath: defaultPathInput.value.trim(),
-        namingTemplate: template,
-        lastUsedPresetId: '' // ★ 改善提案2: デフォルトに戻すためクリア
+        namingTemplate: template
+        // 'lastUsedPresetId: ""' の行を削除
       };
       await window.myAPI.updateConfig(configToSave); 
-      
       defaultNamingTemplate = template;
-      // activeNamingTemplate は initializeApp() でリセットされる
-      // activeNamingTemplate = template; 
-
     } catch (err) {
       showNotification('設定の保存に失敗', true);
     }
     
-    settingsModal.style.display = 'none';
+    // ★ セキュリティ: クラスで表示を切り替え
+    settingsModal.classList.remove('show');
     
-    // 【追加】フォーム状態をリセット
     resetAddForms();
-    
-    // メインフォームの状態をリフレッシュ
-    // ★ 改善提案2: initializeApp() が lastUsedPresetId: '' を読み込み、
-    //               マイセット選択をリセットしてプレビューを更新する
     initializeApp();
   });
 
 
   // --- メインフォームの入力変更イベント ---
-
-  // (10) プレビュー用のイベントリスナー (標準フォーム)
   categorySelect.addEventListener('change', updatePreview);
   projectSelect.addEventListener('change', updatePreview);
   extensionSelect.addEventListener('change', updatePreview);
@@ -1535,36 +1425,26 @@ window.addEventListener('DOMContentLoaded', async () => {
     const selectedPreset = allPresets.find(p => p.id === selectedId);
 
     if (selectedPreset) {
-      // --- セットが選択された ---
       saveDirText.value = selectedPreset.saveDir;
       selectedSaveDir = selectedPreset.saveDir;
       activeNamingTemplate = selectedPreset.template;
 
-      // --- プリセット値の自動入力 ---
       const values = selectedPreset.presetValues || {};
-      
-      // 標準トークン
       categorySelect.value = values.category || '';
       projectSelect.value = values.project || '';
-      extensionSelect.value = values.extension || ''; // ★ 追加
+      extensionSelect.value = values.extension || '';
       freetextInput.value = values.free_text || '';
       
-      // カスタムトークン
       document.querySelectorAll('#custom-tokens-container .custom-token-input').forEach(input => {
         const key = input.dataset.tokenKey;
         input.value = values[key] || '';
       });
-
     } else {
-      // --- 「選択なし」が選ばれた ---
       activeNamingTemplate = defaultNamingTemplate;
-      // (フォームの値はリセットしない。手動で変更した可能性を考慮)
     }
 
     updateFormVisibility(activeNamingTemplate);
     updatePreview();
-
-    // ★ 改善提案2: 最後に選択したプリセットIDを保存
     saveLastUsedPreset(selectedId);
   });
 

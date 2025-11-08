@@ -3,7 +3,12 @@
     <head>
         <meta charset="UTF-8">
         <title>ファイル名管理ツール</title>
-        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:">
+        <!--
+          セキュリティ強化:
+          - style-src から 'unsafe-inline' を削除。
+          - data: は style.css 内のドロップダウン矢印SVGのために許可。
+        -->
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' data:; font-src 'self'; img-src 'self' data:">
         <link rel="stylesheet" href="./assets/fontawesome/all.min.css">
         <link rel="stylesheet" href="style.css">
     </head>
@@ -79,7 +84,8 @@
             <div id="notification" class=""></div>
 
             <!-- ▼▼▼ 設定モーダル ▼▼▼ -->
-            <div id="settings-modal" class="modal-backdrop" style="display: none;"> <div class="modal-content glass-morph">
+            <!-- セキュリティ強化: style="display: none;" を削除。CSSで制御する -->
+            <div id="settings-modal" class="modal-backdrop"> <div class="modal-content glass-morph">
                 <h2>設定</h2>
                 
                 <!-- === 基本設定 === -->
@@ -167,7 +173,7 @@
                         <div class="input-group">
                             <label for="new-preset-template">ファイル名テンプレート:</label>
                             <input type="text" id="new-preset-template" placeholder="{date}_{project}_{version}">
-                            <!-- ▼▼▼ 修正 ▼▼▼ -->
+                            <!-- ▼▼▼ ★ 修正 ★ ▼▼▼ -->
                             <small>利用可能なトークン: {date}, {datetime}, {author}, {category}, {project}, {free_text}, {version} (バージョン管理用)</small>
                             <!-- ▲▲▲ 修正完了 ▲▲▲ -->
                         </div>
