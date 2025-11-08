@@ -1,6 +1,6 @@
 {
   "author": "Author",
-  "defaultSavePath": "C:\\projects\\file_app\\save",
+  "defaultSavePath": "",
   "namingTemplate": "{date}_{category}_{project}_{version}",
   "lastUsedPresetId": ""
 }
