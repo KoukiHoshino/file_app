@@ -109,5 +109,3 @@ npm run make
 ```
 実行すると ``out/make`` ディレクトリにインストーラーが生成されます（Windowsなら``.exe``, macOSなら``.zip``など）。
 
-## ライセンス
-MIT License  Copyright (c) 2025 Sloth
