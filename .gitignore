@@ -8,6 +8,7 @@ pnpm-debug.log*
 # Electron Forge
 out/
 .electron/
+./save/
 
 # OS / Editor
 .DS_Store
