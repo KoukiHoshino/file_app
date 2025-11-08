@@ -22,13 +22,12 @@ let notification;
 let presetSelect;
 let customTokensContainer; 
 let createButton; 
-let settingsModal; // ★ セキュリティ: モーダル要素
+let settingsModal; 
 
 // --- 通知表示用の関数 ---
 let notificationTimer = null;
 function showNotification(message, isError = false) {
   if (!notification) notification = document.getElementById('notification');
-  // ★ 堅牢性: notification が null の場合をガード
   if (!notification) {
     console.error("Notification element not found. Message:", message);
     return;
@@ -42,7 +41,7 @@ function showNotification(message, isError = false) {
 }
 
 /**
- * ★ 堅牢性: 【新規】UI要素の存在を検証するヘルパー
+ * UI要素の存在を検証するヘルパー
  * @param {Object<string, HTMLElement>} elements - { "要素名": 要素 } のオブジェクト
  */
 function validateCriticalUIElements(elements) {
@@ -56,9 +55,7 @@ function validateCriticalUIElements(elements) {
   if (missingElements.length > 0) {
     const errorMsg = `致命的エラー: 必須UI要素が見つかりません: ${missingElements.join(', ')}. HTMLのid属性を確認してください。`;
     console.error(errorMsg);
-    // ユーザーにもエラーを通知
     showNotification(errorMsg, true); 
-    // これ以上実行するとクラッシュするため、ここで処理を中断
     throw new Error(errorMsg); 
   }
 }
@@ -566,7 +563,6 @@ async function refreshSettingsList(listId, getItemsFunction, updateItemsFunction
       deleteButton.innerHTML = '<i class="fas fa-trash"></i>';
       
       deleteButton.addEventListener('click', async () => {
-        // ★ セキュリティ: ネイティブダイアログに変更
         const confirmed = await window.myAPI.showConfirmationDialog(`「${itemText}」を削除しますか？`);
         if (!confirmed) {
           return;
@@ -775,7 +771,6 @@ async function refreshCustomTokensList() {
       deleteButton.title = '削除';
       deleteButton.innerHTML = '<i class="fas fa-trash"></i>';
       deleteButton.addEventListener('click', async () => {
-        // ★ セキュリティ: ネイティブダイアログに変更
         const confirmed = await window.myAPI.showConfirmationDialog(`トークン「${token.tokenName}」を削除しますか？`);
         if (!confirmed) {
           return;
@@ -985,7 +980,6 @@ async function refreshPresetsList() {
       deleteButton.title = '削除';
       deleteButton.innerHTML = '<i class="fas fa-trash"></i>';
       deleteButton.addEventListener('click', async () => {
-        // ★ セキュリティ: ネイティブダイアログに変更
         const confirmed = await window.myAPI.showConfirmationDialog(`マイセット「${preset.setName}」を削除しますか？`);
         if (!confirmed) {
           return;
@@ -1044,7 +1038,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   customTokensContainer = document.getElementById('custom-tokens-container');
 
   // --- UI要素の取得 (設定モーダル - 主要なもの) ---
-  settingsModal = document.getElementById('settings-modal'); // ★ グローバルスコープに
+  settingsModal = document.getElementById('settings-modal'); 
   const openSettingsButton = document.getElementById('open-settings-button');
   const closeSettingsButton = document.getElementById('close-settings-button');
 
@@ -1168,8 +1162,13 @@ window.addEventListener('DOMContentLoaded', async () => {
       const addCategoryButton = document.getElementById('add-category-button');
       const newProjectInput = document.getElementById('new-project-input');
       const addProjectButton = document.getElementById('add-project-button');
+      
+      // ★ 修正: 管理ボタンを取得
       const importSettingsButton = document.getElementById('import-settings-button');
       const exportSettingsButton = document.getElementById('export-settings-button');
+      const openTemplatesFolderButton = document.getElementById('open-templates-folder-button');
+      const openLogFileButton = document.getElementById('open-log-file-button');
+      
       const browseDefaultPathButton = document.getElementById('browse-default-path-button');
       const newTokenName = document.getElementById('new-token-name');
       const newTokenLabel = document.getElementById('new-token-label');
@@ -1206,7 +1205,6 @@ window.addEventListener('DOMContentLoaded', async () => {
       refreshCustomTokensList();
       refreshPresetsList();
 
-      // ★ セキュリティ: クラスで表示を切り替え
       settingsModal.classList.add('show');
       
       if (authorInput) {
@@ -1279,7 +1277,6 @@ window.addEventListener('DOMContentLoaded', async () => {
 
       // (8) インポート
       importSettingsButton.onclick = async () => {
-        // ★ セキュリティ: ネイティブダイアログに変更
         const confirmed = await window.myAPI.showConfirmationDialog('現在の設定は上書きされます。よろしいですか？');
         if (!confirmed) return;
         
@@ -1356,14 +1353,14 @@ window.addEventListener('DOMContentLoaded', async () => {
           const existingToken = allCustomTokens.find(t => t.id === editingItemId);
           if (existingToken.tokenName !== tokenName) {
             if (allCustomTokens.some(t => t.tokenName === tokenName && t.id !== editingItemId)) {
-              return showNotification('エラー: そのトークン名は既に使用されています', true);
+              return showNotification('エラー: その名前は既に使用されています', true);
             }
           }
           const updatedToken = { id: editingItemId, tokenName, label: tokenLabel };
           const newTokens = allCustomTokens.map(t => (t.id === editingItemId ? updatedToken : t));
           result = await window.myAPI.updateCustomTokens(newTokens);
         } else {
-          if (allCustomTokens.some(t => t.tokenName === tokenName)) return showNotification('エラー: そのトークン名は既に使用されています', true);
+          if (allCustomTokens.some(t => t.tokenName === tokenName)) return showNotification('エラー: その名前は既に使用されています', true);
           const newToken = { id: Date.now().toString(), tokenName, label: tokenLabel };
           const newTokens = [...allCustomTokens, newToken];
           result = await window.myAPI.updateCustomTokens(newTokens);
@@ -1378,6 +1375,18 @@ window.addEventListener('DOMContentLoaded', async () => {
           showNotification(editingItemId ? '更新に失敗しました' : '追加に失敗しました', true);
         }
       };
+
+      // --- ★ ユーザビリティ: 【新規】管理ボタンのイベントリスナー ---
+      openTemplatesFolderButton.onclick = async () => {
+        const result = await window.myAPI.openTemplatesFolder();
+        showNotification(result.message, !result.success);
+      };
+      
+      openLogFileButton.onclick = async () => {
+        const result = await window.myAPI.openLogFile();
+        showNotification(result.message, !result.success);
+      };
+
   });
 
   // (4) 設定モーダル: 「閉じる」ボタン
@@ -1389,14 +1398,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     const template = namingTemplateInput.value.trim();
     
     try {
-      // ★ 修正: 既存のconfigを読み込み、lastUsedPresetId を上書きしないようにする
       const config = await window.myAPI.getConfig(); 
       const configToSave = {
-        ...config, // 既存の値 (lastUsedPresetIdを含む) を継承
+        ...config, 
         author: authorInput.value.trim(),
         defaultSavePath: defaultPathInput.value.trim(),
         namingTemplate: template
-        // 'lastUsedPresetId: ""' の行を削除
       };
       await window.myAPI.updateConfig(configToSave); 
       defaultNamingTemplate = template;
@@ -1404,7 +1411,6 @@ window.addEventListener('DOMContentLoaded', async () => {
       showNotification('設定の保存に失敗', true);
     }
     
-    // ★ セキュリティ: クラスで表示を切り替え
     settingsModal.classList.remove('show');
     
     resetAddForms();
@@ -1417,7 +1423,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   projectSelect.addEventListener('change', updatePreview);
   extensionSelect.addEventListener('change', updatePreview);
   freetextInput.addEventListener('input', updatePreview);
-  // (カスタムトークンフォームのリスナーは loadAndRenderCustomTokens 内で動的に追加)
 
   // (11) メインフォーム: 「マイセット」選択
   presetSelect.addEventListener('change', () => {

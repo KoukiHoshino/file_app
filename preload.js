@@ -17,8 +17,11 @@ contextBridge.exposeInMainWorld('myAPI', {
   selectSaveDir: () => ipcRenderer.invoke('select-save-dir'),
   selectDefaultDir: () => ipcRenderer.invoke('select-default-dir'),
   
-  // ★ セキュリティ: 【新規】ネイティブ確認ダイアログ
   showConfirmationDialog: (message) => ipcRenderer.invoke('show-confirmation-dialog', message),
+
+  // --- ★ ユーザビリティ: 【新規】フォルダ/ファイルを開く ---
+  openTemplatesFolder: () => ipcRenderer.invoke('open-templates-folder'),
+  openLogFile: () => ipcRenderer.invoke('open-log-file'),
 
   // --- JSONデータ読み込み ---
   getCategories: () => ipcRenderer.invoke('get-categories'),

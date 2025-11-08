@@ -241,13 +241,25 @@
                 </div>
                 </div>
 
-                <!-- === 設定の管理 === -->
+                <!-- === ★ 修正 ★ 設定の管理 === -->
                 <div class="settings-section io-section">
                 <h3>設定の管理</h3>
+                <!-- ▼▼▼ 修正: 2x2のグリッドレイアウトに変更 ▼▼▼ -->
                 <div class="io-buttons">
-                    <button id="import-settings-button" class="io-button">インポート</button>
-                    <button id="export-settings-button" class="io-button">エクスポート</button>
+                    <button id="import-settings-button" class="io-button">
+                        <i class="fas fa-download"></i> インポート
+                    </button>
+                    <button id="export-settings-button" class="io-button">
+                        <i class="fas fa-upload"></i> エクスポート
+                    </button>
+                    <button id="open-templates-folder-button" class="io-button">
+                        <i class="fas fa-folder-open"></i> テンプレートフォルダ
+                    </button>
+                    <button id="open-log-file-button" class="io-button">
+                        <i class="fas fa-file-csv"></i> ログファイル
+                    </button>
                 </div>
+                <!-- ▲▲▲ 修正完了 ▲▲▲ -->
                 </div>
 
                 <button id="close-settings-button" class="close-button">閉じる</button>

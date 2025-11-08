@@ -539,7 +539,7 @@ button:disabled {
   margin: 1rem auto 0; 
 }
 
-/* --- インポート/エクスポート --- */
+/* --- ★ 修正 ★ インポート/エクスポート/管理 --- */
 .io-section {
   margin-top: 2rem;
   padding-top: 1rem;
@@ -547,18 +547,20 @@ button:disabled {
 }
 
 .io-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
+  display: grid; /* グリッドレイアウトに変更 */
+  grid-template-columns: 1fr 1fr; /* 2列 */
+  gap: 15px; /* ボタン間の隙間 */
 }
 
 .io-button {
-  width: auto;
-  padding: 0.6rem 1.5rem;
+  width: 100%; /* 幅を100%に (buttonタグへの指定を上書き) */
+  padding: 0.8rem 1rem; /* パディングを調整 */
   font-size: 0.9rem;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: none;
+  border-radius: 8px; /* 角丸を他のボタンと合わせる */
+  gap: 10px; /* アイコンとテキストの間隔 */
 }
 
 .io-button:hover {
@@ -566,6 +568,7 @@ button:disabled {
   transform: translateY(-1px);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
+/* ▲▲▲ 修正完了 ▲▲▲ */
 
 
 /* --- アニメーション定義 --- */
