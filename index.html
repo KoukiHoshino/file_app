@@ -16,6 +16,16 @@
             <button id="open-settings-button" class="icon-button settings-button" title="設定">
                 <i class="fas fa-cog"></i> </button>
 
+            <!-- ▼▼▼ マイセット機能 ▼▼▼ -->
+            <div class="input-group">
+                <label for="preset-select">マイセット:</label>
+                <select id="preset-select">
+                    <option value="">（マイセットを選択...）</option>
+                    <!-- ここにセットが読み込まれる -->
+                </select>
+            </div>
+            <!-- ▲▲▲ マイセット機能 ▲▲▲ -->
+
             <div class="input-group"> <label for="save_dir">保存場所:</label>
                 <div class="input-row">
                     <input type="text" id="save_dir" readonly placeholder="保存先フォルダを選択..."></input>
@@ -47,6 +57,12 @@
                 <input type="text" id="attr_freetext" placeholder="（オプション）ファイル名に追加するテキスト">
             </div>
 
+            <!-- ▼▼▼ カスタムトークン入力欄 (動的生成) ▼▼▼ -->
+            <div id="custom-tokens-container">
+                <!-- ここにカスタムトークンのフォームが動的に挿入されます -->
+            </div>
+            <!-- ▲▲▲ カスタムトークン入力欄 ▲▲▲ -->
+
             <div class="input-group">
                 <label for="attr_description">説明 (任意):</label>
                 <textarea id="attr_description" rows="3" placeholder="ファイルに関するメモ..."></textarea>
@@ -62,8 +78,11 @@
             
             <div id="notification" class=""></div>
 
+            <!-- ▼▼▼ 設定モーダル ▼▼▼ -->
             <div id="settings-modal" class="modal-backdrop" style="display: none;"> <div class="modal-content glass-morph">
                 <h2>設定</h2>
+                
+                <!-- === 基本設定 === -->
                 <div class="settings-section">
                 <h3>基本設定</h3>
                 <div class="input-group">
@@ -82,16 +101,115 @@
                 </div>
                 </div>
 
+                <!-- === デフォルト命名規則 === -->
                 <div class="settings-section">
-                <h3>ファイル命名規則</h3>
+                <h3>ファイル命名規則 (デフォルト)</h3>
                 <div class="input-group">
                     <label for="naming-template-input">テンプレート:</label>
                     <input type="text" id="naming-template-input">
-                    <!-- 【変更】ヘルプテキストに新しいトークンを追加 -->
-                    <small>利用可能なトークン: {date}, {datetime}, {author}, {category}, {project}, {free_text}, {version} (必須)</small>
+                    <!-- ▼▼▼ 修正 ▼▼▼ -->
+                    <small>利用可能なトークン: {date}, {datetime}, {author}, {category}, {project}, {free_text}, {version} (バージョン管理用)</small>
+                    <!-- ▲▲▲ 修正完了 ▲▲▲ -->
                 </div>
                 </div>
 
+                <!-- ▼▼▼ カスタムトークン設定 (新規追加) ▼▼▼ -->
+                <div class="settings-section">
+                    <h3>カスタムトークン設定</h3>
+                    <div class="settings-list-container">
+                        <ul id="custom-tokens-list">
+                            <!-- ここにカスタムトークンリストが表示される -->
+                        </ul>
+                    </div>
+                    <div class="settings-add-form glass-morph-inset">
+                        <h4>新しいトークンの追加</h4>
+                        <div class="input-group">
+                            <label for="new-token-name">トークン名 (例: {client})</label>
+                            <input type="text" id="new-token-name" placeholder="{token_name}">
+                        </div>
+                        <div class="input-group">
+                            <label for="new-token-label">表示ラベル (例: 顧客名)</label>
+                            <input type="text" id="new-token-label" placeholder="フォームに表示される名前">
+                        </div>
+                        <button id="add-token-button" class="add-button wide-button">
+                            <i class="fas fa-plus"></i> このトークンを追加
+                        </button>
+                    </div>
+                </div>
+                <!-- ▲▲▲ カスタムトークン設定 ▲▲▲ -->
+
+
+                <!-- ▼▼▼ マイセット設定 (変更) ▼▼▼ -->
+                <div class="settings-section">
+                    <h3>マイセット設定</h3>
+                    <div class="settings-list-container">
+                        <ul id="presets-list">
+                            <!-- ここにセットリストが表示される -->
+                        </ul>
+                    </div>
+                    <div class="settings-add-form glass-morph-inset">
+                        <h4>新しいセットの追加</h4>
+                        
+                        <!-- 1. 基本設定 -->
+                        <div class="input-group">
+                            <label for="new-preset-name">セット名:</label>
+                            <input type="text" id="new-preset-name" placeholder="（例）日報セット">
+                        </div>
+                        <div class="input-group">
+                            <label for="new-preset-saveDir">ファイル保存先:</label>
+                            <div class="input-row">
+                                <input type="text" id="new-preset-saveDir" readonly placeholder="保存先フォルダを選択...">
+                                <button id="browse-preset-saveDir-button" class="select-button" title="参照">
+                                    <i class="fas fa-folder-open"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="new-preset-template">ファイル名テンプレート:</label>
+                            <input type="text" id="new-preset-template" placeholder="{date}_{project}_{version}">
+                            <!-- ▼▼▼ 修正 ▼▼▼ -->
+                            <small>利用可能なトークン: {date}, {datetime}, {author}, {category}, {project}, {free_text}, {version} (バージョン管理用)</small>
+                            <!-- ▲▲▲ 修正完了 ▲▲▲ -->
+                        </div>
+                        
+                        <!-- 2. トークンのプリセット値 -->
+                        <h5 class="preset-values-title">トークンのプリセット値 (オプション)</h5>
+                        <div class="input-group">
+                            <label for="new-preset-category">分類:</label>
+                            <select id="new-preset-category">
+                                <!-- 分類リストが動的に読み込まれる -->
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="new-preset-project">プロジェクト:</label>
+                            <select id="new-preset-project">
+                                <!-- プロジェクトリストが動的に読み込まれる -->
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="new-preset-extension">ファイル形式:</label>
+                            <select id="new-preset-extension">
+                                <!-- ファイル形式リストが動的に読み込まれる -->
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="new-preset-freetext">自由記述:</label>
+                            <input type="text" id="new-preset-freetext" placeholder="プリセットする値">
+                        </div>
+                        
+                        <!-- 3. カスタムトークンのプリセット値 (動的生成) -->
+                        <div id="new-preset-custom-tokens-container">
+                            <!-- ここにカスタムトークン用のプリセット入力欄が動的に挿入されます -->
+                        </div>
+
+                        <button id="add-preset-button" class="add-button wide-button">
+                            <i class="fas fa-plus"></i> このセットを追加
+                        </button>
+                    </div>
+                </div>
+                <!-- ▲▲▲ マイセット設定 ▲▲▲ -->
+
+                <!-- === 分類リスト === -->
                 <div class="settings-section">
                 <h3>分類リスト</h3>
                 <div class="settings-list-container">
@@ -104,6 +222,7 @@
                 </div>
                 </div>
 
+                <!-- === プロジェクトリスト === -->
                 <div class="settings-section">
                 <h3>プロジェクトリスト</h3>
                 <div class="settings-list-container">
@@ -116,6 +235,7 @@
                 </div>
                 </div>
 
+                <!-- === 設定の管理 === -->
                 <div class="settings-section io-section">
                 <h3>設定の管理</h3>
                 <div class="io-buttons">
@@ -127,6 +247,8 @@
                 <button id="close-settings-button" class="close-button">閉じる</button>
             </div>
             </div>
+            <!-- ▲▲▲ 設定モーダル ▲▲▲ -->
+
             <script src="renderer.js"></script>
         </div>
     </body>

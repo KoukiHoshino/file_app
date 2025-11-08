@@ -20,7 +20,29 @@
   ],
   "config": {
     "author": "Author",
-    "defaultSavePath": "C:\\projects\\file_app\\save",
-    "namingTemplate": "{datetime}_{category}_{project}_{version}"
-  }
+    "defaultSavePath": "",
+    "namingTemplate": "{date}_{category}_{project}_{version}"
+  },
+  "presets": [
+    {
+      "id": "1762562768637",
+      "setName": "日報",
+      "saveDir": "C:\\projects\\file_app\\save",
+      "template": "{date}_{author}_{version}",
+      "presetValues": {
+        "category": "",
+        "project": "",
+        "extension": ".txt",
+        "free_text": "",
+        "client": ""
+      }
+    }
+  ],
+  "customTokens": [
+    {
+      "id": "1762562706058",
+      "tokenName": "{client}",
+      "label": "顧客2"
+    }
+  ]
 }

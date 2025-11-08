@@ -12,16 +12,15 @@ body {
   min-height: 100vh;
   height: auto;
   
-  /* ↓↓ background を変更 ↓↓ */
   background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460, #16213e);
-  
-  /* ↓↓ 以下の3行を追加 ↓↓ */
-  background-size: 300% 300%; /* グラデーションのサイズを大きくして動きを滑らかに */
-  animation: animated-gradient 30s ease infinite; /* 30秒かけてゆっくり動かす */
+  background-size: 300% 300%; 
+  animation: animated-gradient 30s ease infinite; 
   
   display: flex;
   justify-content: center;
   align-items: center;
+  padding: 2rem 0; /* スクロール時に上下の余白を確保 */
+  box-sizing: border-box;
 }
 
 /* --- ガラスモーフ パネル --- */
@@ -38,55 +37,92 @@ body {
   width: 90%;
   max-width: 500px;
   padding: 2rem;
-  box-sizing: border-box; /* パディングを含めて幅を計算 */
+  box-sizing: border-box; 
+  animation: float-in 0.7s ease-out forwards;
+  position: relative; /* 設定ボタンの配置基準 */
 }
 
 .form-panel h1 {
   text-align: center;
   margin-top: 0;
-  font-weight: 300; /* フォントを細めに */
+  font-weight: 300; 
   letter-spacing: 1px;
 }
 
 /* --- 入力欄グループ --- */
 .input-group {
   margin-bottom: 1.5rem;
+  position: relative; /* プレースホルダーラインの基準 */
 }
 
 .input-group label {
   display: block;
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.8); /* ラベルの文字色を少し薄く */
+  color: rgba(255, 255, 255, 0.8); 
 }
 
 /* --- テキスト入力とテキストエリアのスタイル --- */
 input[type="text"],
-textarea {
+textarea,
+select {
   width: 100%;
   padding: 0.75rem 1rem;
   box-sizing: border-box;
-  background: rgba(255, 255, 255, 0.2); /* 入力欄も少し透明に */
+  background: rgba(255, 255, 255, 0.2); 
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 8px;
-  color: #ffffff; /* 入力文字の色 */
+  color: #ffffff; 
   font-size: 1rem;
   transition: background 0.3s, box-shadow 0.3s;
 }
 
 input[type="text"]::placeholder,
 textarea::placeholder {
-  color: rgba(255, 255, 255, 0.5); /* プレースホルダーの色 */
+  color: rgba(255, 255, 255, 0.5); 
 }
 
 /* フォーカスが当たった時のスタイル */
-input[type="text"]:focus,
-textarea:focus {
-  outline: none; /* デフォルトの青い枠線を消す */
+input[type="text"]:not([readonly]):focus,
+textarea:not([readonly]):focus,
+select:focus {
+  outline: none; 
   background: rgba(255, 255, 255, 0.3);
-  border-color: #00c6ff; /* 枠線を鮮やかな青に */
+  border-color: #00c6ff; 
   box-shadow: 0 0 15px rgba(0, 198, 255, 0.7), 0 0 5px rgba(0, 198, 255, 1);
 }
+
+/* --- 読み取り専用の入力欄 --- */
+input[readonly] {
+  background: rgba(0, 0, 0, 0.3);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+input[readonly]:focus {
+  box-shadow: none;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+
+/* --- ドロップダウン (select) のスタイル --- */
+select {
+  appearance: none; 
+  cursor: pointer;
+  background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%2Dxmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%2Dwidth%3D%22292.4%22%2Dheight%3D%22292.4%22%3E%3Cpath%2Dfill%3D%22%23FFFFFF%22%2Dd%3D%22M287%2D69.4a17.6%2D17.6%2D0%2D0%2D0%2D13%2D5.4H18.4c-5%2D0%2D9.3%2D1.8%2D13%2D5.4A17.6%2D17.6%2D0%2D0%2D0%2D0%2D82.2c0%2D5%2D1.8%2D9.3%2D5.4%2D13l128%2D128c3.6%2D3.6%2D7.8%2D5.4%2D13%2D5.4s9.4%2D1.8%2D13%2D5.4l128%2D128c3.6%2D3.6%2D5.4%2D7.8%2D5.4%2D13%2D0%2D5%2D1.8%2D9.2%2D5.4%2D12.8z%22%2F%3E%3C%2Fsvg%3E');
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 0.65em auto;
+}
+select option {
+  background: #16213e; 
+  color: #ffffff;
+}
+/* ドロップダウンの「空」オプション */
+select option[value=""] {
+  color: rgba(255, 255, 255, 0.6);
+}
+
 
 /* --- ボタンのスタイル --- */
 button {
@@ -94,335 +130,65 @@ button {
   padding: 0.8rem 1rem;
   border: none;
   border-radius: 8px;
-  background: linear-gradient(135deg, #00c6ff, #0072ff); /* 鮮やかな青のグラデーション */
+  background: linear-gradient(135deg, #00c6ff, #0072ff); 
   color: #ffffff;
   font-size: 1.1rem;
   font-weight: bold;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s, background 0.3s;
   box-shadow: 0 4px 15px rgba(0, 114, 255, 0.3);
+  display: inline-flex; /* アイコンとテキストを中央揃え */
+  justify-content: center;
+  align-items: center;
+  gap: 8px; /* アイコンとテキストの間隔 */
 }
 
 button:hover {
-  transform: translateY(-3px); /* 少しだけ多く浮き上がらせる */
-  box-shadow: 0 8px 25px rgba(0, 114, 255, 0.6); /* 影を広げる */
+  transform: translateY(-3px); 
+  box-shadow: 0 8px 25px rgba(0, 114, 255, 0.6); 
   background: linear-gradient(135deg, #20d7ff, #0082ff); 
 }
 
 button:active {
-  transform: translateY(0); /* クリック時に戻る */
+  transform: translateY(0); 
   box-shadow: 0 4px 15px rgba(0, 114, 255, 0.3);
 }
 
+/* ▼▼▼ ローディング/無効化ボタンスタイル ▼▼▼ */
+button:disabled {
+  background: linear-gradient(135deg, #555, #333);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  opacity: 0.7;
+}
+/* ▲▲▲ ローディング/無効化ボタンスタイル ▲▲▲ */
+
+
+/* --- フォルダ選択 (入力欄 + ボタン) --- */
 .input-row {
-    display: flex; /* これが要素を横並びにするための宣言です */
-    align-items: center; /* 高さが違う要素を下端で揃えます */
-    gap: 10px; /* テキストエリアとボタンの間に隙間を作ります */
+    display: flex;
+    align-items: center; 
+    gap: 10px; 
 }
-
 .input-row input {
-    flex-grow: 1; /* テキストエリアが残りの幅をすべて使うようにします */
-}
-
-/* --- save_dir テキストエリアの高さとパディングを調整 --- */
-.input-row input#save_dir {
-    height: 40px; /* アイコンボタンの高さと合わせる */
-    box-sizing: border-box; /* padding を高さに含める */
+    flex-grow: 1; 
 }
 
 /* --- フォルダ選択ボタン (アイコン) --- */
-.input-group button.select-button { /* input-group内にあるselect-button */
-  width: 40px; /* アイコンボタンの幅を固定 */
-  height: 40px; /* アイコンボタンの高さを固定 */
-  padding: 0; /* パディングをなくす */
-  font-size: 1.2rem; /* アイコンのサイズ */
-  display: flex; /* Flexboxでアイコンを中央揃え */
-  justify-content: center;
-  align-items: center;
-  /* グラデーションやシャドウは既存のものを利用 */
+.select-button { 
+  width: 40px !important; /* 幅を固定 (buttonタグへの指定を上書き) */
+  height: 40px; 
+  padding: 0 !important; /* パディングをなくす (buttonタグへの指定を上書き) */
+  font-size: 1.2rem; 
+  flex-shrink: 0; /* 縮まないように */
 }
 
-.input-group .select-button i {
-  color: #fff; /* アイコンの色を白に */
+/* --- フォームの表示/非表示 --- */
+.input-group.hidden {
+  display: none;
 }
 
-/* フォルダパス表示用のテキストエリアとボタンを横並びにするため、少し調整 */
-.input-group.folder-path-selector { /* このクラスをindex.htmlのdivに追加する */
-    display: flex;
-    align-items: flex-end; /* ボタンを下端に揃える */
-    gap: 10px; /* テキストエリアとボタンの隙間 */
-}
-
-.input-group.folder-path-selector textarea {
-    flex-grow: 1; /* テキストエリアが残りのスペースを埋める */
-}
-
-/* --- 読み取り専用のテキストエリアのスタイル調整 --- */
-textarea[readonly] {
-  background: rgba(0, 0, 0, 0.3); /* より暗く */
-  color: rgba(255, 255, 255, 0.6);
-  cursor: not-allowed; /* マウスカーソルを変更 */
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-/* (入力欄のフォーカス設定を readonly 以外に限定) */
-input[type="text"]:not([readonly]):focus,
-textarea:not([readonly]):focus {
-  outline: none;
-  background: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 0 15px rgba(80, 180, 255, 0.5);
-}
-
-/* --- ドロップダウン (select) のスタイル --- */
-select {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  box-sizing: border-box;
-  background: rgba(255, 255, 255, 0.2); /* 背景を透明に */
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
-  color: #ffffff; /* 文字色 */
-  font-size: 1rem;
-  appearance: none; /* OS標準の矢印を消す */
-  cursor: pointer;
-
-  /* カスタム矢印 (背景画像で追加) */
-  background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-13%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2013l128%20128c3.6%203.6%207.8%205.4%2013%205.4s9.4-1.8%2013-5.4l128-128c3.6-3.6%205.4-7.8%205.4-13%200-5-1.8-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E');
-  background-repeat: no-repeat;
-  background-position: right 1rem center;
-  background-size: 0.65em auto;
-}
-
-select:focus {
-  outline: none;
-  background-color: rgba(255, 255, 255, 0.3); /* focus時の背景色 */
-  box-shadow: 0 0 15px rgba(80, 180, 255, 0.5); /* focus時の光 */
-}
-
-/* ドロップダウンの選択肢 (option) のスタイル */
-select option {
-  background: #16213e; /* 背景色 (ガラスモーフの背景色に合わせる) */
-  color: #ffffff; /* 文字色 */
-}
-
-/* --- 通知メッセージ (トースト) --- */
-#notification {
-  position: fixed; /* 画面に固定 */
-  top: 20px; /* 【変更】bottom から top に変更 */
-  left: 50%; /* 画面中央 */
-  transform: translate(-50%, -100px); /* 【変更】Y軸を画面上 (マイナス方向) に隠す */
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  background: rgba(0, 180, 50, 0.8); /* 成功の色 (緑) */
-  color: #ffffff;
-  font-weight: bold;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(5px);
-  opacity: 0; /* 透明にして隠す */
-  visibility: hidden; /* 操作もできないように */
-  transition: transform 0.4s ease-out, opacity 0.4s ease-out; /* アニメーション */
-  z-index: 1100; /* モーダル(1000)より大きな値 */
-}
-
-/* 表示時のスタイル */
-#notification.show {
-  transform: translate(-50%, 0); /* 【変更なし】Y軸を元の位置 (top: 20px) に戻す (上からスライドイン) */
-  opacity: 1;
-  visibility: visible;
-}
-
-/* エラー時のスタイル (赤色) */
-#notification.error {
-  background: rgba(220, 30, 30, 0.8); /* エラーの色 (赤) */
-}
-
-/* --- アイコンボタンの共通スタイル --- */
-.icon-button {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%; /* 円形 */
-  font-size: 1rem;
-  cursor: pointer;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  transition: background 0.3s, box-shadow 0.3s;
-}
-.icon-button:hover {
-  background: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
-}
-
-/* --- 設定ボタン (右上配置) --- */
-.settings-button {
-  position: absolute; /* form-panel を基準に配置 */
-  top: 20px;
-  right: 20px;
-}
-
-/* --- モーダル (設定画面) --- */
-.modal-backdrop {
-  position: fixed; /* 画面全体を覆う */
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.5); /* 半透明の黒い背景 */
-  backdrop-filter: blur(5px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  opacity: 1;
-  transition: opacity 0.3s;
-}
-
-.modal-content {
-  width: 90%;
-  max-width: 600px;
-  max-height: 80vh; /* 高さが80%を超えたらスクロール */
-  overflow-y: auto;
-  padding: 2rem;
-  position: relative;
-  /* glass-morph は既存のスタイルが適用される */
-}
-
-.modal-content h2 {
-  margin-top: 0;
-  text-align: center;
-}
-
-.settings-section {
-  margin-bottom: 2rem;
-}
-.settings-section h3 {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-  padding-bottom: 0.5rem;
-  font-weight: 400;
-}
-
-/* リスト表示エリア (スクロール可) */
-.settings-list-container {
-  max-height: 150px;
-  overflow-y: auto;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-  padding: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.settings-list-container ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.settings-list-container li {
-  display: flex;
-  align-items: center;
-  padding: 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: 0.9rem;
-}
-
-/* 【追加】アイテムテキストと削除ボタンの間にスペースを空け、ボタンを右に寄せる */
-.settings-list-container li span { /* テキスト部分 */
-  flex-grow: 1; /* 残りのスペースを全て使い、ボタンを右に押しやる */
-  padding-right: 10px; /* テキストとボタンの間に少し余白 */
-  word-break: break-word; /* 長いテキストがはみ出さないように */
-}
-.settings-list-container li:last-child {
-  border-bottom: none;
-}
-
-.delete-item-button {
-  flex-shrink: 0; /* ボタンが縮まないように */
-  margin-left: auto; /* autoマージンで右に寄せる */
-  background: none;
-  border: none;
-  color: rgba(255, 96, 96, 0.7); /* 赤色 */
-  font-size: 1.0rem; /* アイコンサイズを少し小さく */
-  cursor: pointer;
-  transition: transform 0.2s, color 0.2s;
-  padding: 2.0; /* パディング（余白）を 0 にします */
-  line-height: 0; /* アイコンの上下の余白を詰めます */
-  width: 20px; /* ボタンの幅を明示的に指定（微調整用） */
-  height: 20px; /* ボタンの高さを明示的に指定（微調整用） */
-  display: flex; /* アイコンを中央に配置 */
-  align-items: center;
-  justify-content: center;
-}
-.delete-item-button:hover {
-  transform: scale(1.1);
-  color: #ff6060; /* ホバー時に元の赤色に */
-}
-
-/* 追加フォーム */
-.settings-add-form {
-  display: flex;
-  gap: 10px;
-}
-.settings-add-form input {
-  flex-grow: 1; /* 入力欄が残りの幅を埋める */
-}
-.settings-add-form .add-button {
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  flex-shrink: 0;
-  font-size: 1.5rem;
-  font-weight: bold;
-  background: linear-gradient(135deg, #00c6ff, #0072ff);
-  border: none;
-  border-radius: 50%;
-  color: #fff;
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-.settings-add-form .add-button:hover {
-  transform: scale(1.1);
-}
-
-/* 閉じるボタン */
-.close-button {
-  /* 既存の button スタイルが適用されるが、幅だけ上書き */
-  width: auto;
-  padding: 0.75rem 2rem;
-  display: block;
-  margin: 1rem auto 0; /* 中央寄せ */
-}
-
-/* --- インポート/エクスポート --- */
-.io-section {
-  margin-top: 2rem;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.io-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-}
-
-.io-button {
-  /* 既存の button スタイルをベースにしつつ、色や幅を調整 */
-  width: auto;
-  padding: 0.6rem 1.5rem;
-  font-size: 0.9rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: none;
-}
-
-.io-button:hover {
-  background: rgba(255, 255, 255, 0.2);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-}
 
 /* --- ファイル名プレビュー --- */
 .preview-group {
@@ -440,20 +206,367 @@ select option {
   padding: 0.75rem 1rem;
   color: rgba(255, 255, 255, 0.7);
   font-size: 0.9rem;
-  font-family: monospace; /* 等幅フォント */
-  word-break: break-all; /* 長い場合に折り返す */
+  font-family: monospace; 
+  word-break: break-all; 
   min-height: 1.2em;
 }
-
-.input-group.hidden {
-  display: none;
-}
-
 #filename-preview.error {
   color: #ffbaba; /* 薄い赤色 */
 }
 
-/* --- ファイルの末尾に追加 (アニメーション定義) --- */
+/* --- 通知メッセージ (トースト) --- */
+#notification {
+  position: fixed; 
+  top: 20px; 
+  left: 50%; 
+  transform: translate(-50%, -100px); 
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  background: rgba(0, 180, 50, 0.8); 
+  color: #ffffff;
+  font-weight: bold;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(5px);
+  opacity: 0; 
+  visibility: hidden; 
+  transition: transform 0.4s ease-out, opacity 0.4s ease-out; 
+  z-index: 1100; 
+}
+#notification.show {
+  transform: translate(-50%, 0); 
+  opacity: 1;
+  visibility: visible;
+}
+#notification.error {
+  background: rgba(220, 30, 30, 0.8); 
+}
+
+/* --- アイコンボタンの共通スタイル --- */
+.icon-button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%; /* 円形 */
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: background 0.3s, box-shadow 0.3s;
+  padding: 0 !important; /* buttonタグへの指定を上書き */
+}
+.icon-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+  transform: none; /* buttonタグへの指定を上書き */
+}
+
+/* --- 設定ボタン (右上配置) --- */
+.settings-button {
+  position: absolute; 
+  top: 20px;
+  right: 20px;
+}
+
+/* --- モーダル (設定画面) --- */
+.modal-backdrop {
+  position: fixed; 
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5); 
+  backdrop-filter: blur(5px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  opacity: 1;
+  transition: opacity 0.3s;
+}
+
+.modal-content {
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh; 
+  overflow-y: auto;
+  padding: 2rem;
+  position: relative;
+}
+
+.modal-content h2 {
+  margin-top: 0;
+  text-align: center;
+}
+
+.settings-section {
+  margin-bottom: 2rem;
+}
+.settings-section h3 {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  padding-bottom: 0.5rem;
+  font-weight: 400;
+}
+
+/* --- リスト表示エリア (スクロール可) --- */
+.settings-list-container {
+  max-height: 180px; /* 少し高さを増やす */
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  position: relative; /* D&D プレースホルダー用 */
+  padding-bottom: 20px; /* D&D 一番下へのドロップ用 */
+  transition: border 0.2s, background 0.2s, box-shadow 0.2s; /* ★ 修正: box-shadow を追加 */
+}
+
+.settings-list-container ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.settings-list-container li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* テキストとボタンを両端に */
+  padding: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.9rem;
+  position: relative; /* D&D プレースホルダー用 */
+  background: rgba(255, 255, 255, 0.05);
+  transition: transform 0.2s ease, opacity 0.2s ease; /* ★ 修正: transition 追加 */
+}
+.settings-list-container li:last-child {
+  border-bottom: none;
+}
+
+/* リストアイテムのテキスト部分 */
+.item-content {
+  flex-grow: 1;
+  padding-right: 10px;
+  word-break: break-word;
+  display: flex;
+  flex-direction: column; /* 縦並び */
+}
+/* マイセットリストのテキスト */
+.preset-name {
+  font-weight: bold;
+  color: #fff;
+}
+.preset-details, .token-label {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 2px;
+}
+.token-name {
+  font-family: monospace;
+  font-weight: bold;
+}
+
+
+/* リストアイテムのボタン部分 */
+.item-controls {
+  display: flex;
+  flex-shrink: 0; /* 縮まない */
+  gap: 5px;
+}
+.list-button {
+  width: 30px !important;
+  height: 30px !important;
+  padding: 0 !important;
+  font-size: 0.9rem !important;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: none;
+  color: #fff;
+  border-radius: 50%;
+  cursor: pointer; 
+}
+.list-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+}
+
+/* 各ボタンの色 */
+.edit-item-button { color: #89ddff; }
+.delete-item-button { color: #ff8989; }
+.edit-item-button:hover { color: #ade8ff; }
+.delete-item-button:hover { color: #ffadad; }
+
+
+/* ▼▼▼ ドラッグ＆ドロップ(D&D) スタイル (★ 修正) ▼▼▼ */
+.settings-list-container li {
+  cursor: grab;
+}
+/* ドラッグ中のアイテム本体 */
+.settings-list-container li.dragging {
+  opacity: 0.8; /* ★ 修正: 0.6 -> 0.8 */
+  background: #0072ff;
+  cursor: grabbing;
+  transform: scale(1.05); /* ★ 修正: 1.03 -> 1.05 */
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4); /* ★ 修正: 影を強化 */
+  z-index: 20;
+}
+
+/* プレースホルダーライン共通スタイル */
+.settings-list-container li::before,
+.settings-list-container li::after,
+.settings-list-container.drag-over-container::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px; /* ★ 修正: 3px -> 4px */
+  background: #ffffff; /* ★ 修正: #33ddff -> #ffffff */
+  border-radius: 2px;
+  /* ★ 修正: 白の周りに青いグローを追加 */
+  box-shadow: 0 0 12px rgba(0, 198, 255, 1), 0 0 5px rgba(0, 198, 255, 1); 
+  transform: scaleX(0); /* 通常は非表示 */
+  transition: transform 0.1s ease-out;
+  z-index: 10;
+}
+/* アイテムの上にドロップ */
+.settings-list-container li.drag-over-top::before {
+  top: -2px; /* 線の太さの半分 */
+  transform: scaleX(1);
+}
+/* アイテムの下にドロップ */
+.settings-list-container li.drag-over-bottom::after {
+  bottom: -2px;
+  transform: scaleX(1);
+}
+/* リストコンテナの一番下にドロップ */
+.settings-list-container.drag-over-container::after {
+  bottom: 10px; /* コンテナのpadding-bottomに合わせる */
+  left: 10px; /* コンテナのpaddingに合わせる */
+  right: 10px;
+  transform: scaleX(1);
+}
+/* ★ 修正: コンテナがドロップ可能な場合（一番下へのドロップ）*/
+.settings-list-container.drag-over-container {
+  background: rgba(0, 0, 0, 0.4); /* ★ 修正: 0.35 -> 0.4 */
+  /* ★ 修正: コンテナ自体に内側のグローを追加 */
+  box-shadow: inset 0 0 15px rgba(0, 198, 255, 0.7); 
+}
+/* ▲▲▲ D&D スタイル完了 ▲▲▲ */
+
+
+/* --- リスト追加フォーム (分類・プロジェクト) --- */
+.settings-add-form {
+  display: flex;
+  gap: 10px;
+}
+.settings-add-form input {
+  flex-grow: 1; 
+}
+.settings-add-form .add-button {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  flex-shrink: 0;
+  font-size: 1.5rem;
+  font-weight: bold;
+  background: linear-gradient(135deg, #00c6ff, #0072ff);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.3s;
+}
+.settings-add-form .add-button:hover {
+  transform: scale(1.1);
+  box-shadow: none; /* 親の button:hover を上書き */
+}
+/* 幅広の追加ボタン (マイセット用) */
+.settings-add-form .add-button.wide-button {
+  width: 100%;
+  border-radius: 8px;
+  font-size: 1.1rem;
+}
+/* ▼▼▼ 更新ボタンモード ▼▼▼ */
+.settings-add-form .add-button.update-mode {
+  background: linear-gradient(135deg, #ff8c00, #ff6600); /* オレンジ色 */
+}
+.settings-add-form .add-button.update-mode:hover {
+  background: linear-gradient(135deg, #ffa500, #ff7700);
+}
+/* ▲▲▲ 更新ボタンモード ▲▲▲ */
+
+
+/* --- マイセット/カスタムトークン 追加フォームのスタイル --- */
+.glass-morph-inset {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.glass-morph-inset h4 {
+  margin-top: 0;
+  text-align: center;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.9);
+}
+.glass-morph-inset h5.preset-values-title {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  text-align: center;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.7);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 1.5rem;
+}
+/* フォーム内のレイアウト（縦積み） */
+.settings-add-form.glass-morph-inset {
+  display: block; 
+}
+.settings-add-form.glass-morph-inset .input-group {
+  margin-bottom: 1rem;
+}
+
+
+/* --- 閉じるボタン --- */
+.close-button {
+  width: auto;
+  padding: 0.75rem 2rem;
+  display: block;
+  margin: 1rem auto 0; 
+}
+
+/* --- インポート/エクスポート --- */
+.io-section {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.io-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.io-button {
+  width: auto;
+  padding: 0.6rem 1.5rem;
+  font-size: 0.9rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: none;
+}
+
+.io-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+
+/* --- アニメーション定義 --- */
 @keyframes float-in {
   from {
     opacity: 0;
@@ -465,18 +578,6 @@ select option {
   }
 }
 
-/* --- 入力フォームパネルの調整 (.form-panel) に animation を追加 --- */
-.form-panel {
-  width: 90%;
-  max-width: 500px;
-  padding: 2rem;
-  box-sizing: border-box;
-  
-  /* ↓↓ この1行を追加 ↓↓ */
-  animation: float-in 0.7s ease-out forwards;
-}
-
-/* --- ファイルの末尾に追加 (背景アニメーション定義) --- */
 @keyframes animated-gradient {
   0% {
     background-position: 0% 50%;
@@ -487,4 +588,13 @@ select option {
   100% {
     background-position: 0% 50%;
   }
+}
+
+/* --- ヘルプテキスト (small) --- */
+.input-group small {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.4;
 }

@@ -1,0 +1,38 @@
+[
+  {
+    "id": "1762566571929",
+    "setName": "日報",
+    "saveDir": "C:\\projects\\file_app\\save",
+    "template": "{date}_{project}_{version}",
+    "presetValues": {
+      "category": "",
+      "project": "プロジェクトA",
+      "extension": ".md",
+      "free_text": ""
+    }
+  },
+  {
+    "id": "1762566664066",
+    "setName": "nippou",
+    "saveDir": "C:\\projects\\file_app\\save",
+    "template": "{date}_{project}_{datetime}",
+    "presetValues": {
+      "category": "",
+      "project": "その他",
+      "extension": ".txt",
+      "free_text": ""
+    }
+  },
+  {
+    "id": "1762566684749",
+    "setName": "da",
+    "saveDir": "C:\\projects\\file_app\\save",
+    "template": "dafa",
+    "presetValues": {
+      "category": "",
+      "project": "",
+      "extension": ".txt",
+      "free_text": ""
+    }
+  }
+]
