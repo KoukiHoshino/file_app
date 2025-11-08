@@ -2,7 +2,7 @@
 ファイル作成時の命名規則を統一し、ヒューマンエラーを回避することを目的としたデスクトップアプリケーションです。
 
 
-https://github.com/user-attachments/assets/884bc49d-f887-40c6-9cd0-e4ab0a96d20c
+https://github.com/user-attachments/assets/f54d142a-6a02-44b9-8157-dbcafa2ce996
 
 
 ## 目的（ヒューマンエラーの回避）
