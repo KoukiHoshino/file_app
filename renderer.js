@@ -23,8 +23,7 @@ let filenamePreview, groupCategory, groupProject, groupFreetext;
 let notification;
 let presetSelect;
 let customTokensContainer; 
-// (設定モーダル内の要素は都度取得)
-
+let createButton; // ★ 改善提案1: createButton をキャッシュ
 
 // --- 通知表示用の関数 ---
 let notificationTimer = null;
@@ -350,9 +349,23 @@ function collectFormValues() {
 }
 
 
-// --- 【変更】ヘルパー関数: プレビュー更新 ---
+// --- 【変更】ヘルパー関数: プレビュー更新 (★ 改善提案1: ボタン制御追加) ---
 async function updatePreview() {
   if (!filenamePreview) return; 
+
+  // ★ 改善提案1: 必須項目チェック
+  const isReady = selectedSaveDir && extensionSelect.value;
+  
+  if (createButton) {
+    createButton.disabled = !isReady;
+  }
+
+  if (!isReady) {
+    filenamePreview.textContent = '（保存場所とファイル形式を選択してください）';
+    filenamePreview.classList.add('error');
+    return;
+  }
+  // ★ 改善提案1 ここまで
 
   const values = collectFormValues();
   const extension = extensionSelect.value; 
@@ -1025,12 +1038,25 @@ async function refreshPresetsList() {
   }
 }
 
+// ★ 改善提案2: 最後に使用したプリセットIDを保存するヘルパー関数
+async function saveLastUsedPreset(presetId) {
+    try {
+        // 現在の設定を取得
+        const config = await window.myAPI.getConfig();
+        // プリセットIDだけ更新して保存
+        config.lastUsedPresetId = presetId || '';
+        await window.myAPI.updateConfig(config);
+    } catch (err) {
+        console.error('最後のプリセット保存に失敗:', err);
+        // このエラーはユーザー通知しない（バックグラウンド処理のため）
+    }
+}
 
 // --- DOM（HTML）の読み込みが完了したら実行 ---
 window.addEventListener('DOMContentLoaded', async () => {
   
   // --- UI要素の取得 (メインフォーム) ---
-  const createButton = document.getElementById('create-button');
+  createButton = document.getElementById('create-button'); // ★ 改善提案1: キャッシュ
   const selectDirButton = document.getElementById('select-dir-button');
   saveDirText = document.getElementById('save_dir');
   categorySelect = document.getElementById('attr_category');
@@ -1084,10 +1110,17 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
       defaultNamingTemplate = config.namingTemplate || '{date}_{category}_{project}_{version}';
       activeNamingTemplate = defaultNamingTemplate;
+      
+      // ★ 改善提案2: 最後に使用したプリセットを適用
+      if (config.lastUsedPresetId) {
+          presetSelect.value = config.lastUsedPresetId;
+          // イベントを手動で発火させてプリセット値を読み込む
+          presetSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      }
 
       // 5. フォーム表示とプレビューを最終更新
       updateFormVisibility(activeNamingTemplate);
-      updatePreview();
+      updatePreview(); // ★ 改善提案1: これによりボタンの有効/無効も初期化される
 
     } catch (err) {
       console.error('設定の読み込みに失敗', err);
@@ -1115,9 +1148,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   createButton.addEventListener('click', async () => {
     
     // ▼▼▼ 修正: ローディングボタン化 ▼▼▼
-    const originalButtonText = createButton.textContent;
+    const originalButtonHTML = createButton.innerHTML; // ★ アイコンを保持するため textContent から変更
     createButton.disabled = true;
-    createButton.textContent = '作成中...';
+    createButton.innerHTML = '作成中...'; // ★ innerHTML に変更
     // ▲▲▲ 修正完了 ▲▲▲
 
     const values = collectFormValues();
@@ -1141,6 +1174,9 @@ window.addEventListener('DOMContentLoaded', async () => {
           input.value = '';
         });
         
+        // ★ 改善提案2: 作成成功時にも、現在のプリセットIDを保存
+        saveLastUsedPreset(presetSelect.value);
+        
         updatePreview(); // 次のバージョンを表示
       } else {
         showNotification(result.message, true);
@@ -1151,7 +1187,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     } finally {
       // ▼▼▼ 修正: ボタンを元に戻す ▼▼▼
       createButton.disabled = false;
-      createButton.textContent = originalButtonText;
+      createButton.innerHTML = originalButtonHTML; // ★ innerHTML に変更
+      // ★ 改善提案1: ボタンの状態を再評価
+      updatePreview(); 
       // ▲▲▲ 修正完了 ▲▲▲
     }
   });
@@ -1199,10 +1237,11 @@ window.addEventListener('DOMContentLoaded', async () => {
         
         // 2. グローバル変数をリセット
         defaultNamingTemplate = config.namingTemplate || '{date}_{category}_{project}_{version}';
-        activeNamingTemplate = defaultNamingTemplate;
+        // ★ 改善提案2: activeNamingTemplate はメインフォームの値(プリセット)を維持するため、ここではリセットしない
+        // activeNamingTemplate = defaultNamingTemplate; 
         
-        // 3. メインフォームのマイセット選択をリセット
-        presetSelect.value = '';
+        // 3. メインフォームのマイセット選択はそのまま
+        // presetSelect.value = '';
         
       } catch (err) {
         showNotification('設定の読み込みに失敗', true);
@@ -1444,7 +1483,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   });
 
-  // (4) 設定モーダル: 「閉じる」ボタン
+  // (4) 設定モーダル: 「閉じる」ボタン (★ 改善提案2: lastUsedPresetId をクリア)
   closeSettingsButton.addEventListener('click', async () => {
     const namingTemplateInput = document.getElementById('naming-template-input');
     const authorInput = document.getElementById('author-input');
@@ -1456,12 +1495,14 @@ window.addEventListener('DOMContentLoaded', async () => {
       const configToSave = {
         author: authorInput.value.trim(),
         defaultSavePath: defaultPathInput.value.trim(),
-        namingTemplate: template 
+        namingTemplate: template,
+        lastUsedPresetId: '' // ★ 改善提案2: デフォルトに戻すためクリア
       };
       await window.myAPI.updateConfig(configToSave); 
       
       defaultNamingTemplate = template;
-      activeNamingTemplate = template; // アクティブなテンプレートもデフォルトに戻す
+      // activeNamingTemplate は initializeApp() でリセットされる
+      // activeNamingTemplate = template; 
 
     } catch (err) {
       showNotification('設定の保存に失敗', true);
@@ -1473,6 +1514,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     resetAddForms();
     
     // メインフォームの状態をリフレッシュ
+    // ★ 改善提案2: initializeApp() が lastUsedPresetId: '' を読み込み、
+    //               マイセット選択をリセットしてプレビューを更新する
     initializeApp();
   });
 
@@ -1520,6 +1563,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     updateFormVisibility(activeNamingTemplate);
     updatePreview();
+
+    // ★ 改善提案2: 最後に選択したプリセットIDを保存
+    saveLastUsedPreset(selectedId);
   });
 
 });

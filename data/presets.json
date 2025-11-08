@@ -2,7 +2,7 @@
   {
     "id": "1762566571929",
     "setName": "日報",
-    "saveDir": "C:\\projects\\file_app\\save",
+    "saveDir": "C:\\projects\\save",
     "template": "{date}_{project}_{version}",
     "presetValues": {
       "category": "",

@@ -283,9 +283,10 @@ ipcMain.handle('get-filename-preview', async (event, data) => {
   } 
   
   // 必須項目チェック (拡張子のみ)
-  if (!extension) {
-    return { success: false, preview: '（ファイル形式が選択されていません）' };
-  }
+  // ★ 改善提案1: このチェックは renderer 側で行うようになったため、ここでは不要
+  // if (!extension) {
+  //   return { success: false, preview: '（ファイル形式が選択されていません）' };
+  // }
   
   // 2. 全トークンの値をマージ
   const now = new Date();
@@ -338,11 +339,11 @@ ipcMain.handle('get-filename-preview', async (event, data) => {
         versionString = 'vERR!'; // 検索失敗時
       }
     }
-    finalFilename = baseName.replace('{version}', versionString) + extension;
+    finalFilename = baseName.replace('{version}', versionString) + (extension || ''); // ★ extension が空の場合に対応
   
   } else {
     // バージョン管理なしのプレビュー
-    finalFilename = baseName + extension;
+    finalFilename = baseName + (extension || ''); // ★ extension が空の場合に対応
   }
 
   return { success: true, preview: finalFilename };
@@ -381,7 +382,13 @@ ipcMain.handle('get-projects', () => readJsonFile('projects.json', []));
 ipcMain.handle('get-extensions', () => readJsonFile('extensions.json', []));
 ipcMain.handle('get-presets', () => readJsonFile('presets.json', []));
 ipcMain.handle('get-custom-tokens', () => readJsonFile('custom_tokens.json', [])); // 【追加】
-ipcMain.handle('get-config', () => readJsonFile('config.json', { author: '', defaultSavePath: '', namingTemplate: '{date}_{category}_{project}_{version}' }));
+// ★ 改善提案2: lastUsedPresetId をデフォルトに追加
+ipcMain.handle('get-config', () => readJsonFile('config.json', { 
+    author: '', 
+    defaultSavePath: '', 
+    namingTemplate: '{date}_{category}_{project}_{version}',
+    lastUsedPresetId: '' 
+}));
 
 ipcMain.handle('update-categories', (event, data) => writeJsonFile('categories.json', data));
 ipcMain.handle('update-projects', (event, data) => writeJsonFile('projects.json', data));
